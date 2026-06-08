@@ -1,0 +1,320 @@
+{
+  "types": [
+    { "id": "design", "label": "全体設計", "color": "#0072bc" },
+    { "id": "role", "label": "役割エージェント", "color": "#2468b2" },
+    { "id": "process", "label": "プロセスエージェント", "color": "#4caf50" },
+    { "id": "rule", "label": "共通ルール", "color": "#f5a623" },
+    { "id": "template", "label": "テンプレート", "color": "#7a5cff" },
+    { "id": "index", "label": "索引", "color": "#00a6a6" },
+    { "id": "process_detail", "label": "プロセス詳細", "color": "#78b82a" },
+    { "id": "subprocess", "label": "サブプロセス詳細", "color": "#8a8f00" },
+    { "id": "ledger", "label": "台帳", "color": "#cc0000" },
+    { "id": "evidence", "label": "証跡", "color": "#555555" }
+  ],
+  "nodes": [
+    {
+      "id": "system",
+      "label": "Security Role and Process Agent System",
+      "type": "design",
+      "summary": "役割、プロセス、RACIV、文書、台帳、証跡を接続する全体設計。",
+      "details": ["AIエージェントを組織構造に沿って動かすための公開デモ用モデル。", "Obsidian Vaultの設計思想を、GitHub Pages向けにサンプルデータ化しています。"],
+      "tags": ["Demo", "Sample", "Graph View"]
+    },
+    {
+      "id": "folder-design",
+      "label": "フォルダ設計",
+      "type": "design",
+      "summary": "役割、プロセス、ルール、テンプレート、索引、台帳を分けて管理する設計。",
+      "details": ["1ロール1ファイル、1プロセス1ファイルを基本に、共通ルールとテンプレートを横断資産として分離します。"],
+      "tags": ["全体設計"]
+    },
+    {
+      "id": "agent-ops-design",
+      "label": "エージェント運用設計",
+      "type": "design",
+      "summary": "AIエージェントが判断、記録、引き継ぎを行うための運用設計。",
+      "details": ["入力不足や未決定理由を残し、RACIVに沿って人間の承認と検証へ渡します。"],
+      "tags": ["AI", "運用"]
+    },
+    {
+      "id": "role-soc",
+      "label": "SOC Analyst",
+      "type": "role",
+      "summary": "アラート監視、一次分析、チケット起票、エスカレーションを担う役割エージェント。",
+      "details": ["SOC運用ではRを担い、インシデント候補の判断材料と証跡を整理します。"],
+      "tags": ["Role", "Operations"]
+    },
+    {
+      "id": "role-csirt",
+      "label": "CSIRT / Incident Responder",
+      "type": "role",
+      "summary": "重大インシデント対応、封じ込め、復旧、対外連携を担う役割エージェント。",
+      "details": ["SOCからのエスカレーションを受け、判断ログと対応証跡を残します。"],
+      "tags": ["Role", "IR"]
+    },
+    {
+      "id": "role-auditor",
+      "label": "Security Auditor / Assurance Specialist",
+      "type": "role",
+      "summary": "統制、成果物、証跡、例外、是正完了を検証する役割エージェント。",
+      "details": ["RACIVのVとして、AIや人間が作成した成果物を独立した観点で確認します。"],
+      "tags": ["Role", "Verifier"]
+    },
+    {
+      "id": "role-ciso",
+      "label": "CISO / Security Director",
+      "type": "role",
+      "summary": "セキュリティ全体の説明責任、重大リスク、方針、投資判断を持つ役割。",
+      "details": ["重大なリスク受容、例外承認、経営報告のAとして機能します。"],
+      "tags": ["Role", "Accountable"]
+    },
+    {
+      "id": "role-caio",
+      "label": "CAIO / Chief AI Officer",
+      "type": "role",
+      "summary": "AI利用方針、事業価値、AI関連リスク、AI活用統制を担う役割。",
+      "details": ["AIセキュリティ、AI活用セキュリティ、AI利用台帳に深く関与します。"],
+      "tags": ["Role", "AI"]
+    },
+    {
+      "id": "role-appsec",
+      "label": "AppSec Engineer",
+      "type": "role",
+      "summary": "アプリケーション、拡張機能、開発プロセスのセキュリティを担う役割。",
+      "details": ["脆弱性管理やAI機能付きアプリの評価で、RまたはCとして関与します。"],
+      "tags": ["Role", "Product"]
+    },
+    {
+      "id": "process-soc",
+      "label": "SOC運用",
+      "type": "process",
+      "summary": "アラートとログを監視し、異常や攻撃を早期検知してエスカレーションするプロセス。",
+      "details": ["トリガーはアラート発生、ログ異常、脅威情報、顧客通報など。成果物は分析メモ、チケット、監視改善提案です。"],
+      "tags": ["Process", "MTTD"]
+    },
+    {
+      "id": "process-ir",
+      "label": "インシデント対応",
+      "type": "process",
+      "summary": "インシデント候補を評価し、封じ込め、根絶、復旧、報告、再発防止へ進めるプロセス。",
+      "details": ["判断ログ、ケース台帳、証跡保管、改善バックログとの接続が重要です。"],
+      "tags": ["Process", "Response"]
+    },
+    {
+      "id": "process-risk",
+      "label": "リスク管理",
+      "type": "process",
+      "summary": "リスクの識別、評価、受容、移転、低減、監視を行うプロセス。",
+      "details": ["リスク台帳、例外台帳、意思決定ログ、CISO承認と連携します。"],
+      "tags": ["Process", "GRC"]
+    },
+    {
+      "id": "process-doc",
+      "label": "文書管理",
+      "type": "process",
+      "summary": "文書の分類、レビュー、版管理、公開可否、証跡保管を管理するプロセス。",
+      "details": ["GitHub Pages公開時は、内部文書を直接公開せず、サニタイズしたdocsのみを対象にします。"],
+      "tags": ["Process", "Document"]
+    },
+    {
+      "id": "process-ai-sec",
+      "label": "AIセキュリティ",
+      "type": "process",
+      "summary": "AI利用、AIアプリ、モデル、プロンプト、拡張機能のリスクを管理するプロセス。",
+      "details": ["CAIO、CISO、AppSec、Data、Privacy、Auditorの関与が必要です。"],
+      "tags": ["Process", "AI"]
+    },
+    {
+      "id": "rule-raciv",
+      "label": "RACIVルール",
+      "type": "rule",
+      "summary": "R、A、C、I、Vの責任分担を定義する共通ルール。",
+      "details": ["Vを明示することで、AIが生成した成果物や判断案に検証責任を接続できます。"],
+      "tags": ["Rule", "RACIV"]
+    },
+    {
+      "id": "rule-decision",
+      "label": "意思決定ログルール",
+      "type": "rule",
+      "summary": "決定、未決定、条件付き決定、却下の理由を残すためのルール。",
+      "details": ["判断の背景、入力不足、承認者、証跡、次回見直し条件を記録します。"],
+      "tags": ["Rule", "Decision"]
+    },
+    {
+      "id": "rule-document",
+      "label": "文書管理ルール",
+      "type": "rule",
+      "summary": "文書分類、機密性、レビュー、公開可否、保存先を管理するルール。",
+      "details": ["公開時にはinternal表記、実URL、実名、実台帳をサンプル化する必要があります。"],
+      "tags": ["Rule", "Publish"]
+    },
+    {
+      "id": "template-role",
+      "label": "役割エージェントテンプレート",
+      "type": "template",
+      "summary": "役割の目的、日常業務、成果物、連携先、RACIV行動ルールを記述する型。",
+      "details": ["役割ごとにAIエージェントの責任境界を揃えるために使います。"],
+      "tags": ["Template"]
+    },
+    {
+      "id": "template-process",
+      "label": "プロセス実行ログテンプレート",
+      "type": "template",
+      "summary": "トリガー、入力、判断、成果物、KPI/KRI、未決定理由を記録する型。",
+      "details": ["プロセスエージェントの実行記録と監査証跡をつなぎます。"],
+      "tags": ["Template", "Log"]
+    },
+    {
+      "id": "template-decision",
+      "label": "意思決定ログテンプレート",
+      "type": "template",
+      "summary": "判断理由、代替案、承認者、証跡、見直し条件を残すテンプレート。",
+      "details": ["AIが出した提案を、そのまま結論にせず、説明可能な判断として保存します。"],
+      "tags": ["Template", "Decision"]
+    },
+    {
+      "id": "index-role",
+      "label": "役割エージェント索引",
+      "type": "index",
+      "summary": "役割エージェントを一覧化し、担当プロセスや関連ルールへ誘導する索引。",
+      "details": ["採用、育成、権限設計、AIエージェント配置の入口になります。"],
+      "tags": ["Index"]
+    },
+    {
+      "id": "index-process",
+      "label": "プロセスエージェント索引",
+      "type": "index",
+      "summary": "プロセスエージェントを一覧化し、関連役割や詳細設計へ誘導する索引。",
+      "details": ["業務フローから必要ロールと台帳を逆引きできます。"],
+      "tags": ["Index"]
+    },
+    {
+      "id": "detail-soc",
+      "label": "SOC運用詳細",
+      "type": "process_detail",
+      "summary": "SOC運用の開始条件、サブプロセス、判断ポイント、成果物を詳細化した文書。",
+      "details": ["一次分析、チケット化、エスカレーション、監視改善を具体化します。"],
+      "tags": ["Detail"]
+    },
+    {
+      "id": "detail-ai",
+      "label": "AIセキュリティ詳細",
+      "type": "process_detail",
+      "summary": "AI利用、AIアプリ、拡張機能、モデルリスクの評価観点を詳細化した文書。",
+      "details": ["CAIO、CISO、AppSec、監査者の責任分担を明確にします。"],
+      "tags": ["Detail", "AI"]
+    },
+    {
+      "id": "sub-soc-ir",
+      "label": "SOC・IR運用系サブプロセス詳細",
+      "type": "subprocess",
+      "summary": "SOCとインシデント対応の接続、エスカレーション、復旧、レビューのサブプロセス。",
+      "details": ["プロセス間の引き継ぎ漏れを防ぐための詳細層です。"],
+      "tags": ["Subprocess"]
+    },
+    {
+      "id": "sub-ledger",
+      "label": "台帳・是正系サブプロセス詳細",
+      "type": "subprocess",
+      "summary": "リスク、例外、改善、是正完了を台帳として管理するサブプロセス。",
+      "details": ["判断ログから台帳、台帳から改善バックログ、改善から証跡へ接続します。"],
+      "tags": ["Subprocess"]
+    },
+    {
+      "id": "ledger-risk",
+      "label": "リスク台帳",
+      "type": "ledger",
+      "summary": "識別したリスク、評価、対応方針、残余リスク、責任者を管理する台帳。",
+      "details": ["リスク受容にはAの承認とVの確認が必要です。"],
+      "tags": ["Ledger"]
+    },
+    {
+      "id": "ledger-exception",
+      "label": "例外台帳",
+      "type": "ledger",
+      "summary": "標準統制から外れる例外、期限、補完統制、承認者を管理する台帳。",
+      "details": ["期限切れ例外や再承認漏れを防ぐため、証跡とレビューに接続します。"],
+      "tags": ["Ledger"]
+    },
+    {
+      "id": "ledger-decision",
+      "label": "意思決定ログ",
+      "type": "ledger",
+      "summary": "判断内容、理由、未決定理由、承認、証跡、見直し条件を残すログ。",
+      "details": ["AIの提案を組織の説明可能な判断に変えるための中核台帳です。"],
+      "tags": ["Ledger", "Decision"]
+    },
+    {
+      "id": "ledger-ai",
+      "label": "AI利用台帳",
+      "type": "ledger",
+      "summary": "AIツール、用途、データ分類、リスク、承認、レビュー状況を管理する台帳。",
+      "details": ["CAIOとCISOの共同責任や、監査者による確認につながります。"],
+      "tags": ["Ledger", "AI"]
+    },
+    {
+      "id": "evidence-store",
+      "label": "証跡保管",
+      "type": "evidence",
+      "summary": "作業、確認、承認、検証の根拠を保管する証跡ノード。",
+      "details": ["ログ、チケット、レビュー記録、承認記録、スクリーンショットなどをサンプル化して扱います。"],
+      "tags": ["Evidence"]
+    },
+    {
+      "id": "evidence-review",
+      "label": "文書レビュー記録",
+      "type": "evidence",
+      "summary": "文書が誰にレビューされ、どの指摘が処理されたかを示す証跡。",
+      "details": ["公開前チェック、内部レビュー、監査レビューの証拠になります。"],
+      "tags": ["Evidence", "Review"]
+    }
+  ],
+  "links": [
+    { "source": "system", "target": "folder-design", "label": "設計" },
+    { "source": "system", "target": "agent-ops-design", "label": "設計" },
+    { "source": "system", "target": "rule-raciv", "label": "共通ルール" },
+    { "source": "system", "target": "process-soc", "label": "プロセス" },
+    { "source": "system", "target": "role-ciso", "label": "役割" },
+    { "source": "folder-design", "target": "index-role", "label": "索引化" },
+    { "source": "folder-design", "target": "index-process", "label": "索引化" },
+    { "source": "index-role", "target": "role-soc", "label": "一覧" },
+    { "source": "index-role", "target": "role-csirt", "label": "一覧" },
+    { "source": "index-role", "target": "role-auditor", "label": "一覧" },
+    { "source": "index-role", "target": "role-caio", "label": "一覧" },
+    { "source": "index-process", "target": "process-soc", "label": "一覧" },
+    { "source": "index-process", "target": "process-ir", "label": "一覧" },
+    { "source": "index-process", "target": "process-risk", "label": "一覧" },
+    { "source": "index-process", "target": "process-ai-sec", "label": "一覧" },
+    { "source": "role-soc", "target": "process-soc", "label": "R" },
+    { "source": "role-csirt", "target": "process-ir", "label": "R/A" },
+    { "source": "role-auditor", "target": "process-soc", "label": "V" },
+    { "source": "role-auditor", "target": "process-risk", "label": "V" },
+    { "source": "role-ciso", "target": "process-risk", "label": "A" },
+    { "source": "role-caio", "target": "process-ai-sec", "label": "A" },
+    { "source": "role-appsec", "target": "process-ai-sec", "label": "C/R" },
+    { "source": "process-soc", "target": "process-ir", "label": "エスカレーション" },
+    { "source": "process-soc", "target": "detail-soc", "label": "詳細" },
+    { "source": "process-ai-sec", "target": "detail-ai", "label": "詳細" },
+    { "source": "detail-soc", "target": "sub-soc-ir", "label": "分解" },
+    { "source": "process-risk", "target": "sub-ledger", "label": "分解" },
+    { "source": "rule-raciv", "target": "role-soc", "label": "責任境界" },
+    { "source": "rule-raciv", "target": "role-auditor", "label": "V定義" },
+    { "source": "rule-decision", "target": "ledger-decision", "label": "記録" },
+    { "source": "rule-document", "target": "process-doc", "label": "統制" },
+    { "source": "template-role", "target": "role-soc", "label": "型" },
+    { "source": "template-process", "target": "process-soc", "label": "型" },
+    { "source": "template-decision", "target": "ledger-decision", "label": "型" },
+    { "source": "process-soc", "target": "ledger-decision", "label": "判断" },
+    { "source": "process-ir", "target": "ledger-decision", "label": "判断" },
+    { "source": "process-risk", "target": "ledger-risk", "label": "管理" },
+    { "source": "process-risk", "target": "ledger-exception", "label": "例外" },
+    { "source": "process-ai-sec", "target": "ledger-ai", "label": "管理" },
+    { "source": "ledger-risk", "target": "evidence-store", "label": "証跡" },
+    { "source": "ledger-exception", "target": "evidence-store", "label": "証跡" },
+    { "source": "ledger-decision", "target": "evidence-store", "label": "根拠" },
+    { "source": "process-doc", "target": "evidence-review", "label": "レビュー" },
+    { "source": "evidence-review", "target": "evidence-store", "label": "保管" },
+    { "source": "agent-ops-design", "target": "rule-decision", "label": "未決定理由" },
+    { "source": "agent-ops-design", "target": "template-process", "label": "実行ログ" }
+  ]
+}

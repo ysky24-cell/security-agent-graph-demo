@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Security Role and Process Agent System</title>
+  <meta name="description" content="セキュリティ組織における役割エージェント、プロセスエージェント、RACIV、文書管理ルール、台帳、証跡の関係を可視化するデモ。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="#cover" aria-label="Security Role and Process Agent System">
+        <span class="brand-mark"></span>
+        <span>Security Role and Process Agent System</span>
+      </a>
+      <nav class="nav-tabs" aria-label="表示切り替え">
+        <button class="tab-button is-active" data-tab="cover">表紙</button>
+        <button class="tab-button" data-tab="graph">グラフデモ</button>
+        <button class="tab-button" data-tab="checklist">公開前チェック</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section id="cover" class="tab-panel is-active">
+      <div class="hero-band">
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">Demo / Sample</p>
+            <h1>セキュリティ組織を、役割とプロセスの両面から読める構造にする</h1>
+            <p class="lead">このデモは、Obsidian Vaultにあるセキュリティ企業向けの設計思想を、公開用に再構成したグラフビューです。役割エージェント、プロセスエージェント、RACIV、共通ルール、テンプレート、台帳、証跡がどのようにつながるかを一つの画面で探索できます。</p>
+            <div class="hero-actions">
+              <button class="pill-button" data-tab-jump="graph">グラフを見る</button>
+              <button class="pill-button secondary" data-tab-jump="checklist">公開チェックへ</button>
+            </div>
+          </div>
+          <div class="hero-visual" aria-hidden="true">
+            <div class="mini-map">
+              <span class="map-node large"></span>
+              <span class="map-node role"></span>
+              <span class="map-node process"></span>
+              <span class="map-node rule"></span>
+              <span class="map-node ledger"></span>
+              <span class="map-line l1"></span>
+              <span class="map-line l2"></span>
+              <span class="map-line l3"></span>
+              <span class="map-line l4"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <article class="container article-layout">
+        <section class="article-main">
+          <div id="articleBody" class="prose"></div>
+        </section>
+        <aside class="article-aside">
+          <div class="aside-block">
+            <p class="aside-label">可視化する文書種別</p>
+            <div id="typeSummary" class="type-summary"></div>
+          </div>
+          <div class="aside-block">
+            <p class="aside-label">デモの読み方</p>
+            <ul class="compact-list">
+              <li>役割から担当プロセスを追う</li>
+              <li>プロセスからRACIV責任を確認する</li>
+              <li>判断ログ、台帳、証跡への接続を見る</li>
+            </ul>
+          </div>
+        </aside>
+      </article>
+    </section>
+
+    <section id="graph" class="tab-panel">
+      <div class="container graph-shell">
+        <section class="graph-toolbar" aria-label="グラフ操作">
+          <div>
+            <p class="eyebrow">Interactive Graph View</p>
+            <h2>Obsidian風グラフビュー</h2>
+          </div>
+          <div class="toolbar-controls">
+            <label class="search-box">
+              <span>検索</span>
+              <input id="searchInput" type="search" placeholder="SOC、RACIV、台帳など">
+            </label>
+            <button id="resetView" class="pill-button small">表示を戻す</button>
+          </div>
+        </section>
+
+        <div class="filter-panel" id="filterPanel" aria-label="ノード種別フィルター"></div>
+
+        <div class="graph-layout">
+          <section class="graph-stage" aria-label="グラフ描画エリア">
+            <canvas id="graphCanvas"></canvas>
+            <div class="graph-hint">ドラッグで移動、ホイールで拡大縮小、ノード選択で詳細表示</div>
+          </section>
+          <aside class="detail-panel" aria-live="polite">
+            <div id="nodeDetail" class="detail-content"></div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section id="checklist" class="tab-panel">
+      <div class="container checklist-layout">
+        <div>
+          <p class="eyebrow">Before Publishing</p>
+          <h2>公開前チェックリスト</h2>
+          <p class="section-lead">GitHub Pagesで公開する前に、Vault全体ではなく `docs/` の静的デモだけを公開対象にしてください。このデモはサンプルデータとして作成しており、実在の個人・企業・URL・内部台帳を含めない前提です。</p>
+        </div>
+        <div id="checklistItems" class="checklist-grid"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span>Security Role and Process Agent System</span>
+      <span>Public demo data, generated for GitHub Pages.</span>
+    </div>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
