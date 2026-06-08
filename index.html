@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
@@ -73,22 +73,25 @@
     <section id="graph" class="tab-panel">
       <div class="container graph-shell">
         <section class="graph-toolbar">
-          <div>
-            <p class="eyebrow">Interactive Graph View</p>
-            <h2>Security Vault グラフ</h2>
+          <div class="toolbar-header">
+            <div>
+              <p class="eyebrow">Interactive Graph View</p>
+              <h2>Security Vault グラフ</h2>
+            </div>
+            <div class="toolbar-controls">
+              <label class="search-box"><span>検索</span><input id="searchInput" type="search" placeholder="CISO、SOC、AI、NIST など"></label>
+              <button id="resetView" class="pill-button small">表示を戻す</button>
+            </div>
           </div>
-          <div class="toolbar-controls">
-            <label class="search-box"><span>検索</span><input id="searchInput" type="search" placeholder="CISO、SOC、AI、NIST など"></label>
-            <button id="resetView" class="pill-button small">表示を戻す</button>
-          </div>
-        </section>
 
-        <section class="scenario-toolbar" aria-label="表示条件">
-          <label>Scenario View<select id="scenarioView"></select></label>
-          <label>Cost View<select id="costView"></select></label>
-          <label>Region<select id="regionView"></select></label>
-          <label>Message Tone<select id="toneView"></select></label>
-          <label id="severityWrap" class="is-hidden">Breach Severity<select id="severityView"></select></label>
+          <div class="toolbar-group" aria-label="表示条件">
+            <label class="select-box"><span>Scenario View</span><select id="scenarioViewSelect"></select></label>
+            <label class="select-box"><span>Cost View</span><select id="costViewSelect"></select></label>
+            <label class="select-box"><span>Region</span><select id="regionSelect"></select></label>
+            <label class="select-box"><span>Scenario</span><select id="salaryScenarioSelect"><option value="low">Low</option><option value="base" selected>Base</option><option value="high">High</option></select></label>
+            <label class="select-box"><span>Message Tone</span><select id="messageToneSelect"></select></label>
+            <label class="select-box breach-only is-hidden" id="breachSeverityControl"><span>Breach Severity</span><select id="breachSeveritySelect"></select></label>
+          </div>
         </section>
 
         <div class="filter-panel" id="filterPanel" aria-label="ノード種別フィルター"></div>

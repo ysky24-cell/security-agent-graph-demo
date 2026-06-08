@@ -24,49 +24,84 @@
       "heading": "このデモで見えるもの",
       "summary": "管理策、プロセス、役割、RACIV、工数、AI削減効果をグラフでつなぎ、セキュリティ体制を説明可能な構造として確認します。",
       "image": "assets/diagrams/01-overview.png",
-      "points": ["管理策から必要プロセスをたどれる", "プロセスから役割とRACIVを確認できる", "AI補助後の工数とコストを比較できる"]
+      "points": [
+        "管理策から必要プロセスをたどれる",
+        "プロセスから役割とRACIVを確認できる",
+        "AI補助後の工数とコストを比較できる"
+      ],
+      "number": "01"
     },
     {
       "id": "control-to-process",
       "heading": "管理策からプロセスへ",
       "summary": "管理策は文書上の要求で終わらせず、実際に運用されるプロセス、必要文書、台帳、証跡へ接続して確認します。",
       "image": "assets/diagrams/02-control-to-process.png",
-      "points": ["NIST、ISMS、OWASPの要求をプロセスへ展開", "監査時に必要な証跡を逆引き", "未実装・未決定の理由を改善資源の根拠にする"]
+      "points": [
+        "NIST、ISMS、OWASPの要求をプロセスへ展開",
+        "監査時に必要な証跡を逆引き",
+        "未実装・未決定の理由を改善資源の根拠にする"
+      ],
+      "number": "02"
     },
     {
       "id": "process-to-raciv",
       "heading": "プロセスから役割・RACIVへ",
       "summary": "各プロセスはRACIVを持ち、実行責任、説明責任、相談先、通知先、検証者を分けて設計します。",
       "image": "assets/diagrams/03-process-to-raciv.png",
-      "points": ["RとAの空白を早期に発見", "Vとして監査・検証ロールを明示", "AIに任せる範囲と人が承認する範囲を分離"]
+      "points": [
+        "RとAの空白を早期に発見",
+        "Vとして監査・検証ロールを明示",
+        "AIに任せる範囲と人が承認する範囲を分離"
+      ],
+      "number": "03"
     },
     {
       "id": "role-cost-skill",
       "heading": "役割からスキル・人件費へ",
       "summary": "役割ごとに必須スキル、資格、年収レンジ、AI補助率を持たせ、採用・育成・外注判断の材料にします。",
       "image": "assets/diagrams/04-role-cost-skill.png",
-      "points": ["ジュニアからシニアの資格対応を確認", "年収レンジとloaded costを切り替え", "不足スキルを教育計画へつなげる"]
+      "points": [
+        "ジュニアからシニアの資格対応を確認",
+        "年収レンジとloaded costを切り替え",
+        "不足スキルを教育計画へつなげる"
+      ],
+      "number": "04"
     },
     {
       "id": "ai-cost-reduction",
       "heading": "AI補助による削減効果",
       "summary": "AIは最終責任者ではなく、証跡収集、差分要約、一次分類、ドラフト作成を補助します。削減後も人間判断が残る作業を明示します。",
       "image": "assets/diagrams/05-ai-cost-reduction.png",
-      "points": ["AI補助前後の工数を比較", "人間承認が必要な判断を残す", "効果を過大評価しない前提で試算"]
+      "points": [
+        "AI補助前後の工数を比較",
+        "人間承認が必要な判断を残す",
+        "効果を過大評価しない前提で試算"
+      ],
+      "number": "05"
     },
     {
       "id": "cve-posture-impact",
       "heading": "CVE・プロダクトポスチャへの応用",
       "summary": "侵害発生時モードでは、CVE悪用疑い、影響資産、起動プロセス、ポスチャ低下、是正対応を強調して確認します。",
       "image": "assets/diagrams/06-cve-posture-impact.png",
-      "points": ["侵害時に起動するプロセスを強調", "ISMSとNIST CSFのポスチャ低下を表現", "損失額は断定せず影響カテゴリで表示"]
+      "points": [
+        "侵害時に起動するプロセスを強調",
+        "ISMSとNIST CSFのポスチャ低下を表現",
+        "損失額は断定せず影響カテゴリで表示"
+      ],
+      "number": "06"
     },
     {
       "id": "commercial-proposal",
       "heading": "商用提案での使い方",
       "summary": "顧客説明では、現状課題、必要プロセス、役割体制、費用、AI補助効果、監査証跡を一貫したストーリーとして示します。",
       "image": "assets/diagrams/07-commercial-proposal.png",
-      "points": ["提案資料の構成にそのまま転用", "経営向け・監査向け・技術者向けに文脈を切替", "画像を差し替えて図解資料化"]
+      "points": [
+        "提案資料の構成にそのまま転用",
+        "経営向け・監査向け・技術者向けに文脈を切替",
+        "画像を差し替えて図解資料化"
+      ],
+      "number": "07"
     }
   ],
   "checklist": [
