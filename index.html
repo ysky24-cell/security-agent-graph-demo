@@ -3,32 +3,38 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Security Control Cost Graph</title>
-  <meta name="description" content="管理策、プロセス、役割、RACIV、コストモデルをつなぐSecurity Vaultデモ">
+  <title>Security Management Role & Process Demo</title>
+  <meta name="description" content="セキュリティ専門会社の役割、プロセス、管理策、記録、コスト、経営判断を横断して確認するデモページです。">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand" href="#cover" aria-label="Security Control Cost Graph"><span class="brand-mark"></span><span>Security Control Cost Graph</span></a>
+      <a class="brand" href="#overview" aria-label="Security Management Role & Process Demo">
+        <span class="brand-mark"></span>
+        <span>Security Management Role & Process Demo</span>
+      </a>
       <nav class="nav-tabs" aria-label="表示切替">
-        <button class="tab-button is-active" data-tab="cover">概要</button>
-        <button class="tab-button" data-tab="graph">グラフ</button>
-        <button class="tab-button" data-tab="checklist">公開前チェック</button>
+        <button class="tab-button is-active" data-tab="overview">概要</button>
+        <button class="tab-button" data-tab="demo-cost">工数算出</button>
+        <button class="tab-button" data-tab="demo-breach">侵害パス</button>
+        <button class="tab-button" data-tab="demo-executive">経営判断</button>
+        <button class="tab-button" data-tab="graph">Vaultグラフ</button>
+        <button class="tab-button" data-tab="checklist">公開前確認</button>
       </nav>
     </div>
   </header>
 
   <main>
-    <section id="cover" class="tab-panel is-active">
+    <section id="overview" class="tab-panel is-active">
       <div class="hero-band">
         <div class="container hero-content">
           <p id="heroEyebrow" class="eyebrow"></p>
           <h1 id="heroTitle"></h1>
           <p id="heroLead" class="lead"></p>
           <div class="hero-actions">
-            <button class="pill-button" data-tab-jump="graph">グラフを見る</button>
-            <a class="text-link" href="#articleBody">記事カードを見る</a>
+            <button class="pill-button" data-tab-jump="demo-cost">デモを開く</button>
+            <button class="text-button" data-tab-jump="graph">Vaultグラフを見る</button>
           </div>
         </div>
       </div>
@@ -39,70 +45,142 @@
 
       <article class="container article-layout">
         <div>
-          <p class="eyebrow">Article Sections</p>
-          <h2>提案資料として読む</h2>
+          <p class="eyebrow">Article</p>
+          <h2>現在の文書構成に合わせた読み取りガイド</h2>
+          <p class="section-lead">役割、プロセス、管理策、記録類、公的基準、意思決定ログを、経営判断に使えるつながりとして確認します。</p>
           <div id="articleBody" class="article-card-grid"></div>
         </div>
         <aside class="article-aside">
           <div class="aside-block">
-            <p class="aside-label">表示分類</p>
+            <p class="aside-label">公開データの範囲</p>
             <div id="typeSummary" class="type-summary"></div>
           </div>
           <div class="aside-block">
-            <p class="aside-label">使い方</p>
+            <p class="aside-label">今回の更新点</p>
             <ul class="compact-list">
-              <li>図解画像は後から差し替え</li>
-              <li>グラフは主要分類から確認</li>
-              <li>侵害発生時はScenario Viewで切替</li>
+              <li>記事文言を現在のVault構成へ更新</li>
+              <li>図解画像を再生成し、矢印と配置を整理</li>
+              <li>デモをタブ式にし、3ページを追加</li>
             </ul>
           </div>
         </aside>
       </article>
+    </section>
 
-      <section class="cta-band">
-        <div class="container cta-inner">
-          <div>
-            <p class="eyebrow">Graph View</p>
-            <h2>管理策からコストまでをたどる</h2>
-          </div>
-          <button class="pill-button" data-tab-jump="graph">グラフを開く</button>
+    <section id="demo-cost" class="tab-panel">
+      <div class="container demo-layout">
+        <div class="section-heading">
+          <p class="eyebrow">Demo 01</p>
+          <h2>役割・プロセスの工数算出</h2>
+          <p class="section-lead">プロセスに必要な人月と、役割別の人件費を連動させます。記録帳票を追加すると、証跡作成・承認・保管の負荷が加算されます。</p>
         </div>
-      </section>
+        <div id="costProcessTabs" class="local-tabs" aria-label="プロセス選択"></div>
+        <div class="demo-grid two">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Process Cost</p>
+                <h3 id="costProcessTitle">-</h3>
+              </div>
+              <button id="recordsToggle" class="toggle-button" aria-pressed="true">記録帳票 ON</button>
+            </div>
+            <div id="costSummary" class="metric-grid"></div>
+            <canvas id="processCostCanvas" class="chart-canvas" aria-label="プロセス別工数グラフ"></canvas>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Role Cost</p>
+                <h3>役割別人件費</h3>
+              </div>
+            </div>
+            <div id="roleCostLegend" class="legend-row"></div>
+            <canvas id="roleCostCanvas" class="chart-canvas" aria-label="役割別人件費グラフ"></canvas>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo-breach" class="tab-panel">
+      <div class="container demo-layout">
+        <div class="section-heading">
+          <p class="eyebrow">Demo 02</p>
+          <h2>侵害パスとポスチャ低下</h2>
+          <p class="section-lead">CVE発行や侵害イベントを起点に、下位フレームワーク未成立、ISMS未成立、上位フレームワークのポスチャ低下までをストーリーで追います。</p>
+        </div>
+        <div id="breachStoryTabs" class="local-tabs dense" aria-label="侵害ストーリー選択"></div>
+        <div class="demo-grid two">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Breach Path</p>
+                <h3 id="breachTitle">-</h3>
+              </div>
+            </div>
+            <div id="breachFlow" class="flow-stack"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Posture Radar</p>
+                <h3>CSF / AI RMF 影響</h3>
+              </div>
+            </div>
+            <canvas id="breachRadarCanvas" class="radar-canvas" aria-label="侵害前後のポスチャレーダーチャート"></canvas>
+            <div id="breachImpact" class="impact-list"></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo-executive" class="tab-panel">
+      <div class="container demo-layout">
+        <div class="section-heading">
+          <p class="eyebrow">Demo 03</p>
+          <h2>経営判断と投資効果</h2>
+          <p class="section-lead">プロセスをダブルクリックで追加・除外し、役割追加、人件費、CSF/AI RMFポスチャ改善を同時に確認します。</p>
+        </div>
+        <div class="demo-grid two">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Decision Board</p>
+                <h3>追加候補プロセス</h3>
+              </div>
+            </div>
+            <div id="decisionProcessGrid" class="decision-grid"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Executive View</p>
+                <h3>コストとポスチャ改善</h3>
+              </div>
+            </div>
+            <div id="decisionCostCards" class="metric-grid"></div>
+            <canvas id="decisionRadarCanvas" class="radar-canvas" aria-label="経営判断後のポスチャ改善レーダーチャート"></canvas>
+          </section>
+        </div>
+      </div>
     </section>
 
     <section id="graph" class="tab-panel">
       <div class="container graph-shell">
-        <section class="graph-toolbar">
-          <div class="toolbar-header">
-            <div>
-              <p class="eyebrow">Interactive Graph View</p>
-              <h2>Security Vault グラフ</h2>
-            </div>
-            <div class="toolbar-controls">
-              <label class="search-box"><span>検索</span><input id="searchInput" type="search" placeholder="CISO、SOC、AI、NIST など"></label>
-              <button id="resetView" class="pill-button small">表示を戻す</button>
-            </div>
-          </div>
-
-          <div class="toolbar-group" aria-label="表示条件">
-            <label class="select-box"><span>Scenario View</span><select id="scenarioViewSelect"></select></label>
-            <label class="select-box"><span>Cost View</span><select id="costViewSelect"></select></label>
-            <label class="select-box"><span>Region</span><select id="regionSelect"></select></label>
-            <label class="select-box"><span>Scenario</span><select id="salaryScenarioSelect"><option value="low">Low</option><option value="base" selected>Base</option><option value="high">High</option></select></label>
-            <label class="select-box"><span>Message Tone</span><select id="messageToneSelect"></select></label>
-            <label class="select-box breach-only is-hidden" id="breachSeverityControl"><span>Breach Severity</span><select id="breachSeveritySelect"></select></label>
-          </div>
-        </section>
-
-        <div class="filter-panel" id="filterPanel" aria-label="ノード種別フィルター"></div>
-
-        <div class="graph-layout">
-          <section class="graph-stage" aria-label="グラフ描画エリア">
-            <canvas id="graphCanvas"></canvas>
-            <div class="graph-hint">検索すると一致ノードと隣接ノードを強調します。ノード選択で右側に詳細を表示します。</div>
-          </section>
-          <aside class="detail-panel" aria-live="polite"><div id="nodeDetail" class="detail-content"></div></aside>
+        <div class="section-heading">
+          <p class="eyebrow">Graph View</p>
+          <h2>Security Vault グラフ概要</h2>
+          <p class="section-lead">公開デモではVault全体を直接公開せず、ノード種別と接続の概要だけを確認できるようにしています。</p>
         </div>
+        <div id="graphStats" class="overview-grid compact"></div>
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Relationship Map</p>
+              <h3>管理策・プロセス・役割の代表接続</h3>
+            </div>
+          </div>
+          <canvas id="graphCanvas" class="graph-canvas" aria-label="Vault概要グラフ"></canvas>
+        </section>
       </div>
     </section>
 
@@ -110,15 +188,20 @@
       <div class="container checklist-layout">
         <div>
           <p class="eyebrow">Before Publishing</p>
-          <h2>公開前チェック</h2>
-          <p class="section-lead">GitHub Pagesでは、内部Vaultではなくデモとして整えたdocs配下だけを公開します。</p>
+          <h2>公開前確認</h2>
+          <p class="section-lead">DOCSは独立管理の公開用デモとして、Vault本体の内部情報を直接出さない前提で確認します。</p>
         </div>
         <div id="checklistItems" class="checklist-grid"></div>
       </div>
     </section>
   </main>
 
-  <footer class="site-footer"><div class="container footer-inner"><span>Security Control Cost Graph</span><span>Demo data generated from Security Vault.</span></div></footer>
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span>Security Management Role & Process Demo</span>
+      <span>Demo data generated from Security Vault structure.</span>
+    </div>
+  </footer>
   <script src="./app.js"></script>
 </body>
 </html>

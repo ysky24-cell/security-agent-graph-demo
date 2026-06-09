@@ -1,50 +1,489 @@
-const state={graph:null,content:null,nodes:[],links:[],typeMap:new Map(),enabledTypes:new Set(),selectedNode:null,hoveredNode:null,search:"",transform:{x:0,y:0,k:1},draggingNode:null,draggingView:false,lastPointer:null,scenario:"normal",costView:"loaded_cost",region:"JP",tone:"executive",severity:"moderate",salaryScenario:"base",selectedNodeId:null};
-const canvas=document.getElementById("graphCanvas");const ctx=canvas.getContext("2d");
-const yen=new Intl.NumberFormat("ja-JP",{style:"currency",currency:"JPY",maximumFractionDigits:0});
-const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
-async function boot(){const [graph,content]=await Promise.all([fetch("./graph.json").then(r=>r.json()),fetch("./content.json").then(r=>r.json())]);state.graph=graph;state.content=content;state.typeMap=new Map(graph.types.map(t=>[t.id,t]));state.enabledTypes=new Set(graph.meta.initial_visible_types||graph.types.filter(t=>t.defaultVisible).map(t=>t.id));prepareGraph();renderStatic();renderControls();renderFilters();renderDetail(state.nodes[0]);bindTabs();bindGraphControls();resizeCanvas();requestAnimationFrame(tick)}
-function prepareGraph(){const rings={center:0,control:130,process:260,role:390,cost_model:500,ledger:610,evidence:610,rule:600,template:620,index:640,incident:230,breach:190,affected_asset:310,posture_drop:340,remediation:360,loss:380};const byType=new Map();state.graph.nodes.forEach(n=>{if(!byType.has(n.type))byType.set(n.type,[]);byType.get(n.type).push(n)});state.nodes=state.graph.nodes.map(n=>{const group=byType.get(n.type)||[];const i=group.indexOf(n);const count=Math.max(1,group.length);const angle=(Math.PI*2*i/count)+typeOffset(n.type);const ring=rings[n.type]??560;return {...n,x:n.type==="center"?0:Math.cos(angle)*ring,y:n.type==="center"?0:Math.sin(angle)*ring,vx:0,vy:0,r:n.radius||12,fixed:n.type==="center",weight:1}});const map=new Map(state.nodes.map(n=>[n.id,n]));state.links=state.graph.links.map(l=>({...l,sourceNode:map.get(l.source),targetNode:map.get(l.target)})).filter(l=>l.sourceNode&&l.targetNode);state.links.forEach(l=>{l.sourceNode.weight+=.08;l.targetNode.weight+=.08})}
-function typeOffset(type){return {control:.2,process:.7,role:1.1,cost_model:1.7,ledger:2.2,rule:2.8,template:3.4,index:4.0}[type]||0}
-function renderStatic(){document.getElementById("heroEyebrow").textContent=state.content.hero.eyebrow;document.getElementById("heroTitle").textContent=state.content.hero.title;document.getElementById("heroLead").textContent=state.content.hero.lead;document.getElementById("overviewCards").innerHTML=state.content.overview_cards.map(c=>`<article class="overview-card"><h3>${e(c.title)}</h3><p>${e(c.body)}</p></article>`).join("");renderArticle();renderTypeSummary();renderChecklist()}
-function normalizeArticle(){if(Array.isArray(state.content.article))return state.content.article;if(state.content.article&&Array.isArray(state.content.article.paragraphs)){return [{id:"legacy-article",number:"01",heading:state.content.article.heading||"概要",summary:state.content.article.paragraphs.join(" ").slice(0,220),image:"",points:state.content.article.paragraphs.slice(0,3)}]}return []}
-function renderArticle(){const article=normalizeArticle();document.getElementById("articleBody").innerHTML=article.map((section,i)=>{const number=section.number||String(i+1).padStart(2,"0");const points=Array.isArray(section.points)?section.points:[];const image=section.image||"";return `<section class="article-section-card" id="${e(section.id||`section-${i+1}`)}"><span class="section-number">${e(number)}</span><h3>${e(section.heading||"記事セクション")}</h3><p>${e(section.summary||"")}</p><div class="diagram-frame is-missing"><img src="${e(image)}" alt="${e(section.heading||"図解")} の図解" loading="lazy"><div class="diagram-placeholder">図解準備中</div></div><ul class="section-points">${points.map(p=>`<li>${e(p)}</li>`).join("")}</ul></section>`}).join("");document.querySelectorAll(".diagram-frame").forEach(frame=>{const img=frame.querySelector("img");const markLoaded=()=>{frame.classList.add("has-image");frame.classList.remove("is-missing")};const markMissing=()=>{frame.classList.add("is-missing");frame.classList.remove("has-image")};if(!img||!img.getAttribute("src")){markMissing();return}img.addEventListener("load",markLoaded);img.addEventListener("error",markMissing);if(img.complete){img.naturalWidth>0?markLoaded():markMissing()}})}
-function renderTypeSummary(){document.getElementById("typeSummary").innerHTML=state.graph.types.map(t=>`<span class="type-chip" style="color:${t.color}"><span class="chip-dot"></span>${e(t.label)} ${state.graph.meta.counts[t.id]||0}</span>`).join("")}
-function renderChecklist(){document.getElementById("checklistItems").innerHTML=state.content.checklist.map(i=>`<article class="check-item"><h3>${e(i.title)}</h3><p>${e(i.body)}</p></article>`).join("")}
-function renderControls(){fillSelect("scenarioViewSelect",state.graph.views.scenario_view,state.scenario);fillSelect("costViewSelect",state.graph.views.cost_view,state.costView);fillSelect("regionSelect",state.graph.views.regions,state.region);fillSelect("messageToneSelect",state.graph.views.message_tone,state.tone);fillSelect("breachSeveritySelect",state.graph.views.breach_severity,state.severity);document.getElementById("salaryScenarioSelect").value=state.salaryScenario;updateConditionalControls()}
-function fillSelect(id,items,value){const sel=document.getElementById(id);if(!sel)return;sel.innerHTML=items.map(x=>`<option value="${e(x.id)}" ${x.id===value?"selected":""}>${e(x.label)}</option>`).join("")}
-function renderFilters(){const panel=document.getElementById("filterPanel");panel.innerHTML=state.graph.types.map(t=>`<button class="filter-chip ${state.enabledTypes.has(t.id)?"is-on":""}" data-type="${e(t.id)}" style="--type-color:${t.color}"><span class="chip-dot"></span>${e(t.label)} <span>${state.graph.meta.counts[t.id]||0}</span></button>`).join("");panel.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{const type=b.dataset.type;if(state.enabledTypes.has(type)){state.enabledTypes.delete(type);b.classList.remove("is-on")}else{state.enabledTypes.add(type);b.classList.add("is-on")}requestDraw()}))}
-function bindTabs(){document.querySelectorAll("[data-tab], [data-tab-jump]").forEach(b=>b.addEventListener("click",ev=>{ev.preventDefault();setActiveTab(b.dataset.tab||b.dataset.tabJump)}))}
-function setActiveTab(tab){document.querySelectorAll(".tab-button").forEach(b=>b.classList.toggle("is-active",b.dataset.tab===tab));document.querySelectorAll(".tab-panel").forEach(p=>p.classList.toggle("is-active",p.id===tab));if(tab==="graph")setTimeout(resizeCanvas,40);window.scrollTo({top:0,behavior:"smooth"})}
-function bindGraphControls(){document.getElementById("searchInput").addEventListener("input",ev=>{state.search=ev.target.value.trim().toLowerCase();requestDraw()});document.getElementById("resetView").addEventListener("click",resetViewState);const bindings={scenarioViewSelect:"scenario",costViewSelect:"costView",regionSelect:"region",salaryScenarioSelect:"salaryScenario",messageToneSelect:"tone",breachSeveritySelect:"severity"};Object.entries(bindings).forEach(([id,key])=>{const el=document.getElementById(id);if(!el)return;el.addEventListener("change",ev=>{state[key]=ev.target.value;updateConditionalControls();applyScenarioDefaults();renderSelectedDetail();requestDraw()})});canvas.addEventListener("pointerdown",onPointerDown);canvas.addEventListener("pointermove",onPointerMove);canvas.addEventListener("pointerup",onPointerUp);canvas.addEventListener("pointerleave",onPointerUp);canvas.addEventListener("wheel",onWheel,{passive:false});window.addEventListener("resize",resizeCanvas)}
-function resetViewState(){state.scenario="normal";state.costView="loaded_cost";state.region="JP";state.salaryScenario="base";state.severity="moderate";state.tone="executive";state.search="";state.selectedNode=null;state.selectedNodeId=null;state.transform={x:canvas.clientWidth/2,y:canvas.clientHeight/2,k:1};state.enabledTypes=new Set(state.graph.meta.initial_visible_types);document.getElementById("searchInput").value="";renderControls();renderFilters();renderDetail(state.nodes[0]);requestDraw()}
-function updateConditionalControls(){const breachControl=document.getElementById("breachSeverityControl");if(breachControl)breachControl.classList.toggle("is-hidden",state.scenario!=="breach")}
-function applyScenarioDefaults(){if(state.scenario==="breach"){["incident","breach","affected_asset","posture_drop","remediation","loss","evidence"].forEach(t=>state.enabledTypes.add(t));renderFilters()}}
-function renderSelectedDetail(){const node=state.selectedNodeId?state.nodes.find(n=>n.id===state.selectedNodeId):state.selectedNode;if(node)renderDetail(node)}
-function resizeCanvas(){const rect=canvas.parentElement.getBoundingClientRect();const dpr=window.devicePixelRatio||1;canvas.width=Math.floor(rect.width*dpr);canvas.height=Math.floor(rect.height*dpr);canvas.style.width=`${rect.width}px`;canvas.style.height=`${rect.height}px`;ctx.setTransform(dpr,0,0,dpr,0,0);if(!state.transform.x||!state.transform.y){state.transform.x=rect.width/2;state.transform.y=rect.height/2}requestDraw()}
-function tick(){simulate();draw();requestAnimationFrame(tick)}
-function simulate(){const visible=state.nodes.filter(isNodeVisible);const visibleLinks=state.links.filter(l=>isNodeVisible(l.sourceNode)&&isNodeVisible(l.targetNode));for(const l of visibleLinks){const dx=l.targetNode.x-l.sourceNode.x,dy=l.targetNode.y-l.sourceNode.y,d=Math.max(1,Math.hypot(dx,dy));const target=(l.sourceNode.type==="center"||l.targetNode.type==="center")?170:120;const f=(d-target)*.0025*(l.strength||1);const fx=dx/d*f,fy=dy/d*f;if(!l.sourceNode.fixed){l.sourceNode.vx+=fx;l.sourceNode.vy+=fy}if(!l.targetNode.fixed){l.targetNode.vx-=fx;l.targetNode.vy-=fy}}for(let i=0;i<visible.length;i++){for(let j=i+1;j<visible.length;j++){const a=visible[i],b=visible[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.max(10,Math.hypot(dx,dy));const f=520/(d*d),fx=dx/d*f,fy=dy/d*f;if(!a.fixed){a.vx-=fx;a.vy-=fy}if(!b.fixed){b.vx+=fx;b.vy+=fy}}}for(const n of visible){if(n.fixed||state.draggingNode===n){n.vx*=.2;n.vy*=.2;continue}n.vx+=-n.x*.0004;n.vy+=-n.y*.0004;n.vx*=.88;n.vy*=.88;n.x+=n.vx;n.y+=n.vy}}
-function draw(){const rect=canvas.getBoundingClientRect();ctx.clearRect(0,0,rect.width,rect.height);ctx.save();ctx.translate(state.transform.x,state.transform.y);ctx.scale(state.transform.k,state.transform.k);const links=state.links.filter(l=>isNodeVisible(l.sourceNode)&&isNodeVisible(l.targetNode));drawLinks(links);drawNodes(state.nodes.filter(isNodeVisible));ctx.restore()}
-function drawLinks(links){for(const l of links){const active=state.selectedNode&&(l.sourceNode===state.selectedNode||l.targetNode===state.selectedNode);const emphasized=isScenarioLink(l);const search=isSearchNeighbor(l.sourceNode)&&isSearchNeighbor(l.targetNode);ctx.strokeStyle=emphasized?"rgba(204,0,0,.58)":active||search?"rgba(39,125,161,.62)":"rgba(31,41,55,.13)";ctx.lineWidth=emphasized?2.8:active||search?2.1:1;ctx.beginPath();ctx.moveTo(l.sourceNode.x,l.sourceNode.y);ctx.lineTo(l.targetNode.x,l.targetNode.y);ctx.stroke();if(active){drawLinkLabel(l.label,(l.sourceNode.x+l.targetNode.x)/2,(l.sourceNode.y+l.targetNode.y)/2)}}}
-function drawLinkLabel(label,x,y){ctx.save();ctx.font="11px sans-serif";const w=ctx.measureText(label).width+12;ctx.fillStyle="rgba(255,255,255,.94)";roundRect(ctx,x-w/2,y-11,w,22,6);ctx.fill();ctx.fillStyle="#277da1";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(label,x,y);ctx.restore()}
-function drawNodes(nodes){for(const n of nodes){const type=state.typeMap.get(n.type)||{};const selected=n===state.selectedNode,matched=matchesSearch(n),neighbor=isSearchNeighbor(n),scenario=isScenarioNode(n);const dim=state.search&&!matched&&!neighbor;const color=type.color||"#277da1";const r=(n.r+(n.weight||1)*.7)*(selected?1.22:n===state.hoveredNode?1.1:1);ctx.save();ctx.globalAlpha=dim?.28:1;ctx.shadowColor=selected||scenario?"rgba(39,125,161,.32)":"rgba(0,0,0,.14)";ctx.shadowBlur=selected?18:scenario?12:7;ctx.fillStyle=color;ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.lineWidth=matched?4:neighbor?3:selected?3:scenario?3:2;ctx.strokeStyle=matched?"#f5a623":neighbor?"#111827":scenario?"#ffbf69":"#fff";ctx.stroke();if(n.type==="center"){ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(n.x,n.y,r*.36,0,Math.PI*2);ctx.fill()}drawNodeLabel(n,r);ctx.restore()}}
-function drawNodeLabel(n,r){ctx.font=n.type==="center"?"700 13px sans-serif":"600 11px sans-serif";ctx.textAlign="center";ctx.textBaseline="top";const lines=wrapText(n.label,n.type==="center"?180:118);const lh=14,w=Math.min(n.type==="center"?190:130,Math.max(...lines.map(x=>ctx.measureText(x).width))+14),h=lines.length*lh+7,x=n.x-w/2,y=n.y+r+7;ctx.fillStyle="rgba(255,255,255,.9)";roundRect(ctx,x,y,w,h,6);ctx.fill();ctx.fillStyle="#1f2937";lines.forEach((line,i)=>ctx.fillText(line,n.x,y+4+i*lh))}
-function wrapText(text,max){const hasSpace=String(text).includes(" ");const chars=hasSpace?String(text).split(" "):[...String(text)];let lines=[],line="";for(const c of chars){const next=hasSpace?`${line}${line?" ":""}${c}`:line+c;if(ctx.measureText(next).width>max&&line){lines.push(line);line=c}else line=next}if(line)lines.push(line);return lines.slice(0,3)}
-function renderDetail(node){if(!node)return;state.selectedNode=node;state.selectedNodeId=node.id;const type=state.typeMap.get(node.type)||{label:node.type,color:"#277da1"};const neighbors=state.links.filter(l=>l.sourceNode===node||l.targetNode===node).map(l=>({label:l.sourceNode===node?l.targetNode.label:l.sourceNode.label,relation:l.label})).slice(0,12);document.getElementById("nodeDetail").innerHTML=`<div class="detail-title"><div class="detail-meta"><span class="type-chip" style="color:${type.color}"><span class="chip-dot"></span>${e(type.label)}</span>${(node.tags||[]).slice(0,4).map(t=>`<span class="type-chip">${e(t)}</span>`).join("")}</div><h3>${e(node.label)}</h3><p>${e(toneSummary(node))}</p></div>${metricsFor(node)}<div class="detail-section"><h4>表示条件</h4><p>${e(viewText())}</p></div><div class="detail-section"><h4>接続</h4><ul>${neighbors.map(n=>`<li>${e(n.relation)}: ${e(n.label)}</li>`).join("")}</ul></div>${node.path?`<div class="detail-section"><h4>Vault文書</h4><p>${e(node.path)}</p></div>`:""}`;requestDraw()}
-function toneSummary(node){const base=node.summary||"詳細情報を表示します。";const prefix={technical:"技術観点: ",executive:"経営観点: ",audit:"監査観点: ",sales:"提案観点: "}[state.tone]||"";if(node.type==="process"&&state.scenario==="breach")return prefix+base+" 侵害発生時は追加工数と封じ込め・証跡化の負荷を加味します。";if(node.type==="role")return prefix+base+" スキル、資格、年収レンジ、AI補助可能性を合わせて確認します。";if(node.type==="control")return prefix+base+" 必要プロセスと証跡に接続して、実装と監査の説明に使います。";return prefix+base}
-function metricsFor(node){if(!["process","role","control","cost_model"].includes(node.type))return"";const m=computeMetrics(node);return `<div class="detail-section"><h4>コスト表示</h4><div class="metric-grid">${m.map(x=>`<div class="metric"><span>${e(x.label)}</span><b>${e(x.value)}</b></div>`).join("")}</div></div>`}
-function computeMetrics(node){if(node.type==="process"){const h=Number(node.annual_human_hours||0);const breach=node.scenario_effort?.breach?.[state.severity];const bh=state.scenario==="breach"&&breach?h+breach.additional_hours:h;const ai=Math.max(0,Math.round(bh*.68));const cost=Math.round(bh*9000*1.35);if(state.costView==="person_month")return[{label:"年間工数",value:`${Math.round(bh)}h`},{label:"AI補助後",value:`${ai}h`}];if(state.costView==="outsource")return[{label:"外注換算",value:yen.format(cost*1.5)},{label:"追加影響",value:state.scenario==="breach"?`${breach.additional_hours}h`:"なし"}];if(state.costView==="avoided_loss")return[{label:"影響カテゴリ",value:state.scenario==="breach"?"High":"Medium"},{label:"断定額",value:"表示しない"}];return[{label:"loaded cost",value:yen.format(cost)},{label:"削減目安",value:yen.format(Math.max(0,cost-Math.round(ai*9000*1.35)))}]}if(node.type==="role"){const band=node.salary_bands?.[state.region]?.mid||node.salary_bands?.JP?.mid;const med=band?.median||0;return[{label:"Mid中央値",value:med?yen.format(med):"未設定"},{label:"AI補助率",value:node.ai_assistability!=null?`${Math.round(node.ai_assistability*100)}%`:"未設定"}]}if(node.type==="control")return[{label:"実装状態",value:node.status||"active"},{label:"影響",value:state.scenario==="breach"?"High以上を確認":"通常確認"}];return[{label:"表示モード",value:state.costView},{label:"地域",value:state.region}]}
-function viewText(){return `Scenario View: ${state.scenario} / Cost View: ${state.costView} / Region: ${state.region} / Scenario: ${state.salaryScenario} / Message Tone: ${state.tone}${state.scenario==="breach"?` / Breach Severity: ${state.severity}`:""}`}
+const state = {
+  content: null,
+  selectedCostProcess: "continuous-monitoring",
+  includeRecords: true,
+  selectedBreach: "id-compromise",
+  activeDecisionProcesses: new Set(["identity-governance", "continuous-monitoring", "incident-response"])
+};
 
-function isScenarioNode(n){const text=[n.type,n.label,n.summary,...(n.tags||[])].join(" ").toLowerCase();if(state.scenario==="normal")return ["center","control","process","role","cost_model"].includes(n.type);if(state.scenario==="audit")return ["control","evidence","ledger"].includes(n.type)||text.includes("auditor")||text.includes("監査");if(state.scenario==="breach")return ["incident","breach","affected_asset","posture_drop","remediation","loss","evidence"].includes(n.type)||text.includes("インシデント")||text.includes("脆弱性")||text.includes("cve");if(state.scenario==="supply_chain")return ["control","process","evidence","ledger"].includes(n.type)&&(text.includes("委託")||text.includes("サプライ")||text.includes("supplier")||text.includes("拡張")||text.includes("ローカル"));if(state.scenario==="ai_optimization")return ["process","cost_model"].includes(n.type)&&(text.includes("ai")||text.includes("補助"));return false}
-function isScenarioLink(l){return isScenarioNode(l.sourceNode)&&isScenarioNode(l.targetNode)||state.scenario==="breach"&&l.scenario==="breach"}
-function isNodeVisible(n){if(!state.enabledTypes.has(n.type))return false;if(!state.search)return true;return matchesSearch(n)||isSearchNeighbor(n)}
-function matchesSearch(n){if(!state.search)return false;return [n.label,n.summary,...(n.tags||[])].join(" ").toLowerCase().includes(state.search)}
-function isSearchNeighbor(n){if(!state.search)return false;if(matchesSearch(n))return true;return state.links.some(l=>(l.sourceNode===n&&matchesSearch(l.targetNode))||(l.targetNode===n&&matchesSearch(l.sourceNode)))}
-function onPointerDown(ev){canvas.setPointerCapture(ev.pointerId);const p=toGraphPoint(ev),n=findNode(p);state.lastPointer={x:ev.clientX,y:ev.clientY};if(n){state.draggingNode=n;renderDetail(n)}else state.draggingView=true}
-function onPointerMove(ev){const p=toGraphPoint(ev);state.hoveredNode=findNode(p);canvas.style.cursor=state.hoveredNode?"grab":state.draggingView?"grabbing":"default";if(state.draggingNode){state.draggingNode.x=p.x;state.draggingNode.y=p.y;state.draggingNode.vx=0;state.draggingNode.vy=0}else if(state.draggingView&&state.lastPointer){state.transform.x+=ev.clientX-state.lastPointer.x;state.transform.y+=ev.clientY-state.lastPointer.y;state.lastPointer={x:ev.clientX,y:ev.clientY}}requestDraw()}
-function onPointerUp(){state.draggingNode=null;state.draggingView=false;state.lastPointer=null}
-function onWheel(ev){ev.preventDefault();const rect=canvas.getBoundingClientRect(),mx=ev.clientX-rect.left,my=ev.clientY-rect.top,old=state.transform.k,next=clamp(old*(ev.deltaY>0?.9:1.1),.42,2.6),gx=(mx-state.transform.x)/old,gy=(my-state.transform.y)/old;state.transform.k=next;state.transform.x=mx-gx*next;state.transform.y=my-gy*next;requestDraw()}
-function toGraphPoint(ev){const r=canvas.getBoundingClientRect();return{x:(ev.clientX-r.left-state.transform.x)/state.transform.k,y:(ev.clientY-r.top-state.transform.y)/state.transform.k}}
-function findNode(p){return state.nodes.filter(isNodeVisible).slice().reverse().find(n=>Math.hypot(p.x-n.x,p.y-n.y)<=n.r+12)}
-function requestDraw(){draw()}function roundRect(c,x,y,w,h,r){r=Math.min(r,w/2,h/2);c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}function e(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
-boot().catch(err=>{document.body.innerHTML=`<main class="container" style="padding:48px 0"><h1>読み込みに失敗しました</h1><p>${e(err.message)}</p></main>`});
+const costProcesses = [
+  {
+    id: "continuous-monitoring",
+    name: "継続的監視",
+    personMonths: 5.4,
+    baseCost: 820,
+    records: { personMonths: 0.9, cost: 120 },
+    roles: [
+      { name: "SOCアナリスト", ratio: 38, cost: 360 },
+      { name: "CSIRT", ratio: 24, cost: 220 },
+      { name: "セキュリティアーキテクト", ratio: 18, cost: 160 },
+      { name: "監査・検証", ratio: 20, cost: 80 }
+    ]
+  },
+  {
+    id: "vulnerability-management",
+    name: "脆弱性管理",
+    personMonths: 4.1,
+    baseCost: 680,
+    records: { personMonths: 0.7, cost: 90 },
+    roles: [
+      { name: "脆弱性調査", ratio: 34, cost: 240 },
+      { name: "開発", ratio: 28, cost: 210 },
+      { name: "セキュリティリサーチャー", ratio: 20, cost: 150 },
+      { name: "検証", ratio: 18, cost: 80 }
+    ]
+  },
+  {
+    id: "ai-risk-management",
+    name: "AIリスク管理",
+    personMonths: 3.8,
+    baseCost: 760,
+    records: { personMonths: 0.8, cost: 110 },
+    roles: [
+      { name: "CAIO", ratio: 24, cost: 240 },
+      { name: "Security for AI", ratio: 28, cost: 220 },
+      { name: "AI for Security", ratio: 18, cost: 140 },
+      { name: "ガバナンス", ratio: 30, cost: 160 }
+    ]
+  },
+  {
+    id: "third-party-security",
+    name: "委託先管理",
+    personMonths: 3.2,
+    baseCost: 520,
+    records: { personMonths: 1.1, cost: 130 },
+    roles: [
+      { name: "ガバナンス", ratio: 30, cost: 160 },
+      { name: "コンプライアンス", ratio: 24, cost: 120 },
+      { name: "監査", ratio: 26, cost: 130 },
+      { name: "CISO", ratio: 20, cost: 110 }
+    ]
+  }
+];
+
+const breachStories = [
+  story("id-compromise", "ID侵害", "CVE発行後、認証基盤の既知脆弱性から特権IDが悪用される。", ["MFA例外管理", "特権ID棚卸", "ログ相関分析"], ["A.5.15 アクセス制御", "A.8.2 特権アクセス権", "A.8.15 ログ取得"], ["CSF PR.AA", "CSF DE.CM", "AI RMF MAP"], [82, 76, 72, 68, 64], [55, 48, 46, 50, 44]),
+  story("detection-gap", "検知侵害", "EDRアラートの運用未整備により侵害兆候が長期間見落とされる。", ["検知ルール管理", "チューニング記録", "エスカレーション基準"], ["A.8.16 監視活動", "A.5.24 インシデント管理計画"], ["CSF DE.CM", "CSF RS.AN"], [78, 74, 70, 66, 62], [48, 44, 42, 46, 50]),
+  story("component-cve", "脆弱コンポーネント", "OSSコンポーネントのCVE対応が遅れ、公開PoCから侵害される。", ["SBOM更新", "CVEトリアージ", "修正リリース判定"], ["A.8.8 技術的脆弱性管理", "A.8.25 セキュア開発ライフサイクル"], ["CSF ID.RA", "CSF PR.PS"], [80, 72, 74, 70, 66], [52, 46, 50, 48, 43]),
+  story("cloud-misconfig", "クラウド設定不備", "公開ストレージと過剰権限が重なり、機密ファイルが外部公開される。", ["CSPM検知", "設定標準", "例外承認"], ["A.8.9 構成管理", "A.5.23 クラウドサービス利用"], ["CSF PR.PS", "CSF GV.RM"], [76, 70, 72, 68, 64], [46, 42, 48, 44, 40]),
+  story("supplier-breach", "委託先侵害", "委託先の運用端末侵害から接続情報が流出する。", ["委託先評価", "接続権限管理", "監査証跡"], ["A.5.19 供給者関係", "A.5.22 供給者サービス監視"], ["CSF GV.SC", "CSF ID.IM"], [78, 73, 68, 67, 62], [50, 45, 41, 43, 39]),
+  story("ai-data-leak", "AIデータ漏えい", "AI利用時のプロンプトに個人情報と機密仕様が混入する。", ["AI利用ルール", "入力データ分類", "DLP連携"], ["A.5.34 プライバシーと個人情報保護", "A.8.12 データ漏えい防止"], ["AI RMF MEASURE", "AI RMF MANAGE"], [74, 72, 70, 68, 66], [44, 46, 43, 40, 42]),
+  story("local-app", "ローカルアプリ侵害", "未承認アプリが端末上で認証情報と業務データへアクセスする。", ["アプリ棚卸", "許可リスト", "端末制御"], ["A.8.1 利用者端末", "A.8.19 ソフトウェア導入"], ["CSF PR.PS", "CSF DE.CM"], [77, 72, 69, 66, 63], [49, 43, 42, 45, 41]),
+  story("extension-risk", "拡張機能侵害", "ChromeやAI拡張機能の権限過多によりセッション情報が流出する。", ["拡張機能審査", "権限レビュー", "ブラウザポリシー"], ["A.8.19 ソフトウェア導入", "A.5.15 アクセス制御"], ["CSF PR.AA", "CSF GV.OC"], [76, 71, 68, 64, 62], [47, 42, 39, 40, 38]),
+  story("log-missing", "ログ欠落", "監査ログの保存期間と時刻同期が不足し、侵害範囲を特定できない。", ["ログ保全", "時刻同期", "証跡レビュー"], ["A.8.15 ログ取得", "A.8.17 クロック同期"], ["CSF DE.AE", "CSF RS.AN"], [79, 73, 70, 65, 61], [51, 45, 40, 39, 36]),
+  story("backup-failure", "復旧不備", "ランサム被害後、復旧手順とバックアップ検証が不足し停止が長期化する。", ["復旧訓練", "バックアップ検証", "BCP判断"], ["A.5.30 ICT継続性", "A.8.13 情報バックアップ"], ["CSF RC.RP", "CSF GV.RM"], [75, 72, 69, 68, 63], [45, 44, 43, 40, 36])
+];
+
+const decisionProcesses = [
+  { id: "identity-governance", name: "IDガバナンス", cost: 420, roles: ["CISO", "IAM担当", "監査"], improves: [8, 5, 4, 4, 3] },
+  { id: "continuous-monitoring", name: "継続的監視", cost: 680, roles: ["SOC", "CSIRT", "分析アナリスト"], improves: [4, 9, 7, 5, 3] },
+  { id: "incident-response", name: "インシデント対応", cost: 520, roles: ["CSIRT", "フォレンジック", "広報連携"], improves: [3, 4, 8, 6, 4] },
+  { id: "ai-risk-management", name: "AIリスク管理", cost: 560, roles: ["CAIO", "Security for AI", "法務"], improves: [5, 3, 4, 9, 8] },
+  { id: "supplier-audit", name: "委託先監査", cost: 360, roles: ["監査", "コンプライアンス", "調達"], improves: [6, 3, 3, 4, 5] },
+  { id: "privacy-control", name: "個人情報管理", cost: 410, roles: ["個人情報保護", "DPO相当", "監査"], improves: [5, 3, 3, 6, 7] }
+];
+
+const postureLabels = ["Govern", "Identify", "Protect", "Detect", "Respond"];
+const decisionBaseline = [54, 50, 48, 46, 44];
+
+function story(id, name, lead, lower, isms, upper, before, after) {
+  return { id, name, lead, lower, isms, upper, before, after };
+}
+
+function yen(value) {
+  return `${Math.round(value).toLocaleString("ja-JP")}万円`;
+}
+
+function qs(selector) {
+  return document.querySelector(selector);
+}
+
+function qsa(selector) {
+  return [...document.querySelectorAll(selector)];
+}
+
+async function init() {
+  state.content = await fetch("./content.json").then((res) => res.json());
+  renderContent();
+  bindTabs();
+  bindCostDemo();
+  renderCostDemo();
+  bindBreachDemo();
+  renderBreachDemo();
+  renderDecisionDemo();
+  renderGraph();
+}
+
+function renderContent() {
+  const { hero, overview_cards, article, checklist } = state.content;
+  qs("#heroEyebrow").textContent = hero.eyebrow;
+  qs("#heroTitle").textContent = hero.title;
+  qs("#heroLead").textContent = hero.lead;
+
+  qs("#overviewCards").innerHTML = overview_cards.map((card) => `
+    <section class="overview-card">
+      <h3>${card.title}</h3>
+      <p>${card.body}</p>
+    </section>
+  `).join("");
+
+  qs("#articleBody").innerHTML = article.map((item) => `
+    <section class="article-card">
+      <img src="${item.image}" alt="${item.heading}の図解" loading="lazy">
+      <div class="article-card-body">
+        <span class="article-number">${item.number}</span>
+        <h3>${item.heading}</h3>
+        <p>${item.summary}</p>
+        <ul>${item.points.map((point) => `<li>${point}</li>`).join("")}</ul>
+      </div>
+    </section>
+  `).join("");
+
+  qs("#typeSummary").innerHTML = [
+    ["役割", "CISO / CAIO / CSIRT / 監査"],
+    ["プロセス", "RACIV / 詳細手順 / 工数"],
+    ["管理策", "ISMS / NIST / OWASP / SCS"],
+    ["記録", "判断ログ / 監査調書 / 台帳"]
+  ].map(([label, text]) => `<div><strong>${label}</strong><span>${text}</span></div>`).join("");
+
+  qs("#checklistItems").innerHTML = checklist.map((item) => `
+    <section class="check-card">
+      <h3>${item.title}</h3>
+      <p>${item.body}</p>
+    </section>
+  `).join("");
+}
+
+function bindTabs() {
+  const activate = (id) => {
+    qsa(".tab-button").forEach((button) => button.classList.toggle("is-active", button.dataset.tab === id));
+    qsa(".tab-panel").forEach((panel) => panel.classList.toggle("is-active", panel.id === id));
+    history.replaceState(null, "", `#${id}`);
+    requestAnimationFrame(renderVisibleCharts);
+  };
+
+  qsa("[data-tab]").forEach((button) => button.addEventListener("click", () => activate(button.dataset.tab)));
+  qsa("[data-tab-jump]").forEach((button) => button.addEventListener("click", () => activate(button.dataset.tabJump)));
+  const initial = location.hash.replace("#", "");
+  if (initial && qs(`#${initial}`)) activate(initial);
+}
+
+function renderVisibleCharts() {
+  const activePanel = qs(".tab-panel.is-active");
+  if (!activePanel) return;
+  if (activePanel.id === "demo-cost") renderCostDemo();
+  if (activePanel.id === "demo-breach") renderBreachDemo();
+  if (activePanel.id === "demo-executive") renderDecisionDemo();
+  if (activePanel.id === "graph") renderGraph();
+}
+
+function bindCostDemo() {
+  qs("#costProcessTabs").innerHTML = costProcesses.map((process) => `
+    <button class="local-tab ${process.id === state.selectedCostProcess ? "is-active" : ""}" data-cost-id="${process.id}">${process.name}</button>
+  `).join("");
+
+  qsa("[data-cost-id]").forEach((button) => button.addEventListener("click", () => {
+    state.selectedCostProcess = button.dataset.costId;
+    renderCostDemo();
+  }));
+
+  qs("#recordsToggle").addEventListener("click", () => {
+    state.includeRecords = !state.includeRecords;
+    renderCostDemo();
+  });
+}
+
+function renderCostDemo() {
+  const process = costProcesses.find((item) => item.id === state.selectedCostProcess) || costProcesses[0];
+  const recordCost = state.includeRecords ? process.records.cost : 0;
+  const recordMonths = state.includeRecords ? process.records.personMonths : 0;
+  const totalCost = process.baseCost + recordCost;
+  const totalMonths = process.personMonths + recordMonths;
+
+  qsa("[data-cost-id]").forEach((button) => button.classList.toggle("is-active", button.dataset.costId === process.id));
+  qs("#costProcessTitle").textContent = process.name;
+  qs("#recordsToggle").textContent = `記録帳票 ${state.includeRecords ? "ON" : "OFF"}`;
+  qs("#recordsToggle").setAttribute("aria-pressed", String(state.includeRecords));
+  qs("#costSummary").innerHTML = [
+    ["年間人月", `${totalMonths.toFixed(1)}人月`],
+    ["概算人件費", yen(totalCost)],
+    ["記録帳票分", state.includeRecords ? `${process.records.personMonths.toFixed(1)}人月 / ${yen(process.records.cost)}` : "除外中"]
+  ].map(([label, value]) => metric(label, value)).join("");
+
+  drawBars(qs("#processCostCanvas"), [
+    { label: "基本運用", value: process.baseCost, color: "#2563eb" },
+    { label: "記録帳票", value: recordCost, color: "#f59e0b" }
+  ], "万円");
+
+  qs("#roleCostLegend").innerHTML = process.roles.map((role) => `<span><i></i>${role.name}</span>`).join("");
+  drawBars(qs("#roleCostCanvas"), process.roles.map((role, index) => ({
+    label: role.name,
+    value: Math.round((role.cost / process.baseCost) * totalCost),
+    color: palette[index % palette.length]
+  })), "万円");
+}
+
+function bindBreachDemo() {
+  qs("#breachStoryTabs").innerHTML = breachStories.map((item) => `
+    <button class="local-tab ${item.id === state.selectedBreach ? "is-active" : ""}" data-breach-id="${item.id}">${item.name}</button>
+  `).join("");
+
+  qsa("[data-breach-id]").forEach((button) => button.addEventListener("click", () => {
+    state.selectedBreach = button.dataset.breachId;
+    renderBreachDemo();
+  }));
+}
+
+function renderBreachDemo() {
+  const breach = breachStories.find((item) => item.id === state.selectedBreach) || breachStories[0];
+  qsa("[data-breach-id]").forEach((button) => button.classList.toggle("is-active", button.dataset.breachId === breach.id));
+  qs("#breachTitle").textContent = breach.name;
+  qs("#breachFlow").innerHTML = [
+    ["CVE発行 / 侵害イベント", breach.lead],
+    ["下位フレームワーク未成立", breach.lower.join(" / ")],
+    ["ISMS管理策未成立", breach.isms.join(" / ")],
+    ["上位フレームワーク低下", breach.upper.join(" / ")]
+  ].map(([label, body], index) => `
+    <div class="flow-item">
+      <span>${String(index + 1).padStart(2, "0")}</span>
+      <div><strong>${label}</strong><p>${body}</p></div>
+    </div>
+  `).join("");
+  drawRadar(qs("#breachRadarCanvas"), postureLabels, [
+    { name: "侵害前", values: breach.before, color: "#2563eb" },
+    { name: "侵害後", values: breach.after, color: "#dc2626" }
+  ]);
+  qs("#breachImpact").innerHTML = postureLabels.map((label, index) => {
+    const diff = breach.before[index] - breach.after[index];
+    return `<div><strong>${label}</strong><span>-${diff}pt</span></div>`;
+  }).join("");
+}
+
+function renderDecisionDemo() {
+  qs("#decisionProcessGrid").innerHTML = decisionProcesses.map((process) => {
+    const active = state.activeDecisionProcesses.has(process.id);
+    return `
+      <button class="decision-card ${active ? "is-active" : ""}" data-decision-id="${process.id}">
+        <span>${active ? "追加中" : "未追加"}</span>
+        <strong>${process.name}</strong>
+        <small>${process.roles.join(" / ")}</small>
+        <em>${yen(process.cost)}</em>
+      </button>
+    `;
+  }).join("");
+
+  qsa("[data-decision-id]").forEach((button) => button.addEventListener("dblclick", () => {
+    const id = button.dataset.decisionId;
+    if (state.activeDecisionProcesses.has(id)) state.activeDecisionProcesses.delete(id);
+    else state.activeDecisionProcesses.add(id);
+    renderDecisionDemo();
+  }));
+
+  const active = decisionProcesses.filter((item) => state.activeDecisionProcesses.has(item.id));
+  const totalCost = active.reduce((sum, item) => sum + item.cost, 0);
+  const uniqueRoles = new Set(active.flatMap((item) => item.roles));
+  const after = decisionBaseline.map((base, index) => Math.min(95, base + active.reduce((sum, item) => sum + item.improves[index], 0)));
+  const avgImprove = after.reduce((sum, value, index) => sum + (value - decisionBaseline[index]), 0) / after.length;
+
+  qs("#decisionCostCards").innerHTML = [
+    ["追加プロセス", `${active.length}件`],
+    ["追加役割", `${uniqueRoles.size}種`],
+    ["年間追加費用", yen(totalCost)],
+    ["平均改善幅", `+${avgImprove.toFixed(1)}pt`]
+  ].map(([label, value]) => metric(label, value)).join("");
+
+  drawRadar(qs("#decisionRadarCanvas"), postureLabels, [
+    { name: "現状", values: decisionBaseline, color: "#64748b" },
+    { name: "投資後", values: after, color: "#16a34a" }
+  ]);
+}
+
+function renderGraph() {
+  const stats = [
+    ["役割ノード", "CISO、CAIO、監査、CSIRT、AI専門家"],
+    ["プロセスノード", "監視、対応、管理策運用、監査、BCP"],
+    ["管理策ノード", "ISMSを中層に各フレームワークを接続"],
+    ["記録ノード", "判断ログ、台帳、監査調書、是正記録"]
+  ];
+  qs("#graphStats").innerHTML = stats.map(([title, body]) => `<section class="overview-card"><h3>${title}</h3><p>${body}</p></section>`).join("");
+  drawMiniGraph(qs("#graphCanvas"));
+}
+
+function metric(label, value) {
+  return `<div class="metric-card"><span>${label}</span><strong>${value}</strong></div>`;
+}
+
+const palette = ["#2563eb", "#16a34a", "#f59e0b", "#7c3aed", "#0891b2", "#dc2626"];
+
+function setupCanvas(canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(rect.width * ratio));
+  canvas.height = Math.max(1, Math.round(rect.height * ratio));
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  return { ctx, width: rect.width, height: rect.height };
+}
+
+function drawBars(canvas, data, unit) {
+  const { ctx, width, height } = setupCanvas(canvas);
+  ctx.clearRect(0, 0, width, height);
+  const max = Math.max(...data.map((item) => item.value), 1);
+  const left = 128;
+  const top = 28;
+  const barHeight = Math.min(42, (height - top * 2) / data.length - 12);
+  ctx.font = "13px system-ui";
+  ctx.textBaseline = "middle";
+  data.forEach((item, index) => {
+    const y = top + index * (barHeight + 18);
+    const barWidth = (width - left - 72) * (item.value / max);
+    ctx.fillStyle = "#334155";
+    ctx.fillText(item.label, 16, y + barHeight / 2);
+    ctx.fillStyle = "#e2e8f0";
+    roundRect(ctx, left, y, width - left - 72, barHeight, 8);
+    ctx.fill();
+    ctx.fillStyle = item.color;
+    roundRect(ctx, left, y, barWidth, barHeight, 8);
+    ctx.fill();
+    ctx.fillStyle = "#0f172a";
+    ctx.fillText(`${item.value}${unit}`, left + barWidth + 10, y + barHeight / 2);
+  });
+}
+
+function drawRadar(canvas, labels, series) {
+  const { ctx, width, height } = setupCanvas(canvas);
+  ctx.clearRect(0, 0, width, height);
+  const cx = width / 2;
+  const cy = height / 2 + 10;
+  const radius = Math.min(width, height) * 0.32;
+  const steps = 4;
+  ctx.font = "12px system-ui";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  for (let step = 1; step <= steps; step++) {
+    const r = (radius * step) / steps;
+    polygon(ctx, labels.length, cx, cy, r);
+    ctx.strokeStyle = "#dbe3ef";
+    ctx.stroke();
+  }
+
+  labels.forEach((label, index) => {
+    const angle = -Math.PI / 2 + (index * Math.PI * 2) / labels.length;
+    const x = cx + Math.cos(angle) * (radius + 34);
+    const y = cy + Math.sin(angle) * (radius + 24);
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
+    ctx.stroke();
+    ctx.fillStyle = "#334155";
+    ctx.fillText(label, x, y);
+  });
+
+  series.forEach((item) => {
+    ctx.beginPath();
+    item.values.forEach((value, index) => {
+      const angle = -Math.PI / 2 + (index * Math.PI * 2) / labels.length;
+      const r = radius * (value / 100);
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = `${item.color}30`;
+    ctx.strokeStyle = item.color;
+    ctx.lineWidth = 2;
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  series.forEach((item, index) => {
+    const x = 22 + index * 112;
+    ctx.fillStyle = item.color;
+    roundRect(ctx, x, 18, 14, 14, 4);
+    ctx.fill();
+    ctx.fillStyle = "#334155";
+    ctx.textAlign = "left";
+    ctx.fillText(item.name, x + 22, 25);
+  });
+}
+
+function drawMiniGraph(canvas) {
+  const { ctx, width, height } = setupCanvas(canvas);
+  ctx.clearRect(0, 0, width, height);
+  const nodes = [
+    { label: "外部基準", x: 90, y: 85, color: "#0f766e" },
+    { label: "管理策", x: 260, y: 85, color: "#2563eb" },
+    { label: "プロセス", x: 430, y: 85, color: "#7c3aed" },
+    { label: "RACIV役割", x: 600, y: 85, color: "#f59e0b" },
+    { label: "記録類", x: 430, y: 210, color: "#16a34a" },
+    { label: "判断ログ", x: 600, y: 210, color: "#dc2626" }
+  ];
+  const links = [[0, 1], [1, 2], [2, 3], [2, 4], [4, 5], [5, 3]];
+  ctx.lineWidth = 2;
+  links.forEach(([from, to]) => arrow(ctx, nodes[from], nodes[to]));
+  nodes.forEach((node) => {
+    ctx.fillStyle = node.color;
+    roundRect(ctx, node.x - 60, node.y - 22, 120, 44, 10);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.font = "14px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(node.label, node.x, node.y);
+  });
+}
+
+function polygon(ctx, sides, cx, cy, radius) {
+  ctx.beginPath();
+  for (let index = 0; index < sides; index++) {
+    const angle = -Math.PI / 2 + (index * Math.PI * 2) / sides;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function arrow(ctx, from, to) {
+  const angle = Math.atan2(to.y - from.y, to.x - from.x);
+  const startX = from.x + Math.cos(angle) * 66;
+  const startY = from.y + Math.sin(angle) * 28;
+  const endX = to.x - Math.cos(angle) * 66;
+  const endY = to.y - Math.sin(angle) * 28;
+  ctx.strokeStyle = "#94a3b8";
+  ctx.fillStyle = "#94a3b8";
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(endX, endY);
+  ctx.lineTo(endX - Math.cos(angle - 0.45) * 10, endY - Math.sin(angle - 0.45) * 10);
+  ctx.lineTo(endX - Math.cos(angle + 0.45) * 10, endY - Math.sin(angle + 0.45) * 10);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
+}
+
+window.addEventListener("resize", () => {
+  renderCostDemo();
+  renderBreachDemo();
+  renderDecisionDemo();
+  renderGraph();
+});
+
+init();
