@@ -38,6 +38,78 @@ const postureLabels = ["GV", "ID", "PR", "DE", "RS", "RC", "AI-GOV", "AI-MAP"];
 const postureBaseline = [76, 72, 70, 68, 66, 64, 62, 60];
 const decisionBaseline = [54, 50, 48, 46, 44, 42, 40, 38];
 const palette = ["#2563eb", "#16a34a", "#f59e0b", "#7c3aed", "#0891b2", "#dc2626", "#64748b"];
+const HOURS_PER_PERSON_MONTH = 160;
+const salarySourceMeta = {
+  title: "役割費用の参照元",
+  note: "役割別の年間費用は、国内の公的賃金統計と職種別賃金情報を基準に、セキュリティ専門会社のシニア度・専門性をデモ用に補正した概算値です。",
+  links: [
+    {
+      label: "厚生労働省 職業情報提供サイト job tag",
+      url: "https://shigoto.mhlw.go.jp/"
+    },
+    {
+      label: "厚生労働省 賃金構造基本統計調査",
+      url: "https://www.mhlw.go.jp/toukei/list/chinginkouzou.html"
+    },
+    {
+      label: "国税庁 民間給与実態統計調査",
+      url: "https://www.nta.go.jp/publication/statistics/kokuzeicho/minkan/top.htm"
+    }
+  ]
+};
+const controlDescriptions = {
+  "A.5.3": "職務の分離。重要操作を一人に集中させず、不正や誤操作を発見しやすくする管理策。",
+  "A.5.10": "情報及び関連資産の利用許容範囲。秘密情報や認証情報をどこまで使えるかを定める管理策。",
+  "A.5.14": "情報転送。メール、チャット、ファイル共有などで安全に情報を渡すための管理策。",
+  "A.5.15": "アクセス制御。利用者が必要な情報だけにアクセスできるようにする管理策。",
+  "A.5.19": "供給者関係の情報セキュリティ。委託先や外部サービスに求めるセキュリティ条件を定める管理策。",
+  "A.5.20": "供給者契約でのセキュリティ要求。委託契約に守るべき管理策や責任を入れるための管理策。",
+  "A.5.22": "供給者サービスの監視・レビュー・変更管理。委託先の状態を継続的に確認する管理策。",
+  "A.5.23": "クラウドサービス利用時の情報セキュリティ。クラウド設定、責任分界、利用条件を管理する管理策。",
+  "A.5.24": "インシデント管理の計画と準備。発生時に誰が何をするかを事前に整える管理策。",
+  "A.5.28": "情報セキュリティ事象からの証拠収集。調査や監査に使える証跡を保全する管理策。",
+  "A.5.29": "事業継続における情報セキュリティ。障害や侵害時にも必要な保護を継続する管理策。",
+  "A.5.30": "ICT継続性の準備。復旧目標、バックアップ、代替手段を用意する管理策。",
+  "A.5.31": "法令・規制・契約要求事項の特定。守るべきルールを把握する管理策。",
+  "A.5.33": "記録の保護。監査証跡や判断ログを失わず改ざんされないようにする管理策。",
+  "A.5.34": "プライバシーと個人情報保護。個人情報保護法やGDPRなどを踏まえて扱う管理策。",
+  "A.5.35": "独立した情報セキュリティレビュー。第三者的な目線で管理策の妥当性を確認する管理策。",
+  "A.5.36": "方針・規則・標準への順守。決めたルールが実際に守られているか確認する管理策。",
+  "A.5.37": "文書化した運用手順。属人化せず、同じ品質で作業できるようにする管理策。",
+  "A.6.3": "情報セキュリティ意識向上、教育及び訓練。人による侵害や誤操作を減らす管理策。",
+  "A.8.1": "利用者エンドポイント機器。PCや端末を安全に使うための管理策。",
+  "A.8.2": "特権アクセス権。管理者権限を最小化し、利用を監視する管理策。",
+  "A.8.3": "情報アクセス制限。機密情報へのアクセス範囲を制限する管理策。",
+  "A.8.5": "セキュアな認証。MFAや認証強度を確保する管理策。",
+  "A.8.7": "マルウェア対策。悪意あるソフトウェアの侵入や実行を防ぐ管理策。",
+  "A.8.8": "技術的脆弱性の管理。CVEなどの脆弱性を把握し修正判断する管理策。",
+  "A.8.9": "構成管理。クラウド、端末、システム設定を安全な状態で維持する管理策。",
+  "A.8.11": "データマスキング。機密情報を不要に露出させない管理策。",
+  "A.8.12": "データ漏えい防止。DLPなどで外部流出を検知・防止する管理策。",
+  "A.8.13": "情報のバックアップ。復旧に必要なデータを保持し検証する管理策。",
+  "A.8.15": "ログ取得。調査や検知に必要なログを残す管理策。",
+  "A.8.16": "監視活動。異常や攻撃兆候を継続的に見つける管理策。",
+  "A.8.17": "クロック同期。ログの時刻を合わせ、調査できる状態にする管理策。",
+  "A.8.19": "運用システムへのソフトウェア導入。許可されたソフトウェアだけを導入する管理策。",
+  "A.8.23": "Webフィルタリング。危険サイトや不適切な通信を抑制する管理策。",
+  "A.8.24": "暗号の利用。秘密情報を暗号化や鍵管理で守る管理策。",
+  "A.8.25": "セキュア開発ライフサイクル。開発工程にセキュリティを組み込む管理策。",
+  "A.8.26": "アプリケーションセキュリティ要求事項。アプリに必要な安全要件を定める管理策。",
+  "A.8.28": "セキュアコーディング。脆弱な実装を減らす管理策。",
+  "A.8.31": "開発・試験・本番環境の分離。環境間の混在や誤操作を防ぐ管理策。",
+  "A.8.32": "変更管理。修正、設定変更、リリースを統制する管理策。"
+};
+const postureDescriptions = {
+  GV: { name: "Govern", description: "組織の方針、リスク許容度、責任、監督を定める領域。経営判断の土台になります。" },
+  ID: { name: "Identify", description: "資産、依存関係、リスク、脆弱性を把握する領域。何を守るべきかを明確にします。" },
+  PR: { name: "Protect", description: "アクセス制御、訓練、データ保護、設定管理などで侵害を起きにくくする領域。" },
+  DE: { name: "Detect", description: "ログ、監視、異常検知により、侵害や兆候を早く見つける領域。" },
+  RS: { name: "Respond", description: "インシデント分析、封じ込め、連絡、対応実行を行う領域。" },
+  RC: { name: "Recover", description: "復旧計画、改善、コミュニケーションにより事業を戻す領域。" },
+  "AI-GOV": { name: "AI RMF Govern", description: "AI利用の方針、責任、リスク管理体制を定める領域。" },
+  "AI-MAP": { name: "AI RMF Map", description: "AIの利用目的、文脈、影響範囲、関係者を把握する領域。" }
+};
+const postureScale = "目安: 1 初期 / 2 管理中 / 3 定義済み / 4 測定・改善中 / 5 最適化";
 const racivMeta = {
   R: { label: "R 実行", color: "#2563eb" },
   A: { label: "A 説明責任", color: "#16a34a" },
@@ -341,7 +413,7 @@ function prepareOverviewGraph() {
   const oldById = new Map(graph.nodes.map((node) => [node.id, node]));
   const canvas = qs("#vaultGraphCanvas");
   const rect = canvas.getBoundingClientRect();
-  graph.nodes = sourceNodes.filter((node) => visibleIds.has(node.id)).slice(0, search ? 120 : 80).map((node, index) => {
+  graph.nodes = selectOverviewNodes(sourceNodes, visibleIds, search).map((node, index) => {
     const old = oldById.get(node.id);
     const angle = index * 2.399963;
     const radius = 80 + index * 2.8;
@@ -362,6 +434,24 @@ function prepareOverviewGraph() {
   if (!graph.selected || !nodesById.has(graph.selected.id)) graph.selected = graph.nodes.find((node) => node.type === "center") || graph.nodes[0] || null;
   if (graph.animation) cancelAnimationFrame(graph.animation);
   simulateOverviewGraph();
+}
+
+function selectOverviewNodes(sourceNodes, visibleIds, search) {
+  const matched = sourceNodes.filter((node) => visibleIds.has(node.id));
+  if (search) return matched.slice(0, 140);
+  const selected = [];
+  const selectedIds = new Set();
+  const add = (node) => {
+    if (!node || selectedIds.has(node.id)) return;
+    selected.push(node);
+    selectedIds.add(node.id);
+  };
+  matched.filter((node) => node.type === "center" || node.id.startsWith("hub:") || node.important).forEach(add);
+  [...state.overviewGraph.visibleTypes].forEach((type) => {
+    const cap = ["center", "control", "process", "role", "cost_model"].includes(type) ? 18 : 24;
+    matched.filter((node) => node.type === type).slice(0, cap).forEach(add);
+  });
+  return selected.slice(0, 160);
 }
 
 function simulateOverviewGraph() {
@@ -534,6 +624,7 @@ function renderOverviewNodeDetail(node) {
     .filter((link) => link.source === node.id || link.target === node.id)
     .slice(0, 8)
     .map((link) => link.source === node.id ? link.targetNode : link.sourceNode);
+  const costBlock = renderOverviewCostBlock(node);
   detail.innerHTML = `
     <p class="eyebrow">Node Detail</p>
     <h3>${node.label}</h3>
@@ -544,9 +635,98 @@ function renderOverviewNodeDetail(node) {
       <div><dt>接続</dt><dd>${related.length}件</dd></div>
       ${node.path ? `<div><dt>文書</dt><dd>${node.path}</dd></div>` : ""}
     </dl>
+    ${costBlock}
     ${node.tags?.length ? `<div class="tag-row">${node.tags.slice(0, 8).map((tag) => `<span>${tag}</span>`).join("")}</div>` : ""}
     ${related.length ? `<h4>隣接ノード</h4><ul>${related.map((item) => `<li>${item.label}</li>`).join("")}</ul>` : ""}
   `;
+}
+
+function renderOverviewCostBlock(node) {
+  if (node.type === "process") return renderProcessEffortBlock(node);
+  if (node.type === "role") return renderRoleAnnualCostBlock(node);
+  return "";
+}
+
+function renderProcessEffortBlock(node) {
+  const effortRows = Array.isArray(node.raciv_effort) ? node.raciv_effort : [];
+  const fallback = findCostDetailByNode(node);
+  if (!effortRows.length && !fallback) return "";
+  const totalHours = effortRows.reduce((sum, item) => sum + (Number(item.hours_per_run) || 0), 0);
+  const aiAdjustedHours = effortRows.reduce((sum, item) => {
+    const hours = Number(item.hours_per_run) || 0;
+    const reduction = Number(item.ai_reduction_rate) || 0;
+    return sum + hours * (1 - reduction);
+  }, 0);
+  const months = effortRows.length ? totalHours / HOURS_PER_PERSON_MONTH : fallback.personMonths;
+  const adjustedMonths = effortRows.length ? aiAdjustedHours / HOURS_PER_PERSON_MONTH : null;
+  const roleCount = unique(effortRows.map((item) => item.role_id || item.role).filter(Boolean)).length || fallback?.roles.length || 0;
+  return `
+    <section class="node-cost-block">
+      <h4>工数</h4>
+      <div class="node-cost-grid">
+        <div><span>年間工数</span><strong>${months.toFixed(2)}人月 / 年</strong></div>
+        ${effortRows.length ? `<div><span>年間時間</span><strong>${Math.round(totalHours).toLocaleString("ja-JP")}時間 / 年</strong></div>` : ""}
+        ${adjustedMonths !== null ? `<div><span>AI補助後目安</span><strong>${adjustedMonths.toFixed(2)}人月 / 年</strong></div>` : ""}
+        <div><span>関与役割</span><strong>${roleCount}種</strong></div>
+      </div>
+      <p class="node-cost-note">RACIV別の年間時間を ${HOURS_PER_PERSON_MONTH}時間 = 1人月として換算しています。</p>
+    </section>
+  `;
+}
+
+function renderRoleAnnualCostBlock(node) {
+  const jpBands = node.salary_bands?.JP;
+  if (!jpBands) return "";
+  const levels = ["junior", "mid", "senior", "lead"]
+    .map((level) => ({ level, band: jpBands[level] }))
+    .filter((item) => item.band && Number(item.band.median));
+  if (!levels.length) return "";
+  const representative = levels.find((item) => item.level === "senior")
+    || levels.find((item) => item.level === "mid")
+    || levels[0];
+  const min = Math.min(...levels.map((item) => Number(item.band.min)).filter(Boolean));
+  const max = Math.max(...levels.map((item) => Number(item.band.max)).filter(Boolean));
+  return `
+    <section class="node-cost-block">
+      <h4>年間費用</h4>
+      <div class="node-cost-grid">
+        <div><span>代表年額</span><strong>${formatAnnualYen(representative.band.median)}</strong></div>
+        <div><span>想定レンジ</span><strong>${formatAnnualYen(min)} - ${formatAnnualYen(max)}</strong></div>
+        <div><span>代表レベル</span><strong>${levelLabel(representative.level)}</strong></div>
+      </div>
+      <details class="salary-source">
+        <summary>${salarySourceMeta.title}</summary>
+        <p>${salarySourceMeta.note}</p>
+        <ul>
+          ${salarySourceMeta.links.map((item) => `<li><a href="${item.url}" target="_blank" rel="noreferrer">${item.label}</a></li>`).join("")}
+        </ul>
+      </details>
+    </section>
+  `;
+}
+
+function findCostDetailByNode(node) {
+  const normalizedLabel = normalizeText(node.label);
+  return costProcessGroups
+    .flatMap((groupItem) => groupItem.details)
+    .find((item) => item.id === node.id.replace(/^process-/, "") || normalizeText(item.name) === normalizedLabel);
+}
+
+function normalizeText(value) {
+  return String(value || "").replace(/[・\s/_-]/g, "").toLowerCase();
+}
+
+function formatAnnualYen(value) {
+  return `${Math.round(Number(value) / 10000).toLocaleString("ja-JP")}万円 / 年`;
+}
+
+function levelLabel(level) {
+  return {
+    junior: "ジュニア",
+    mid: "ミドル",
+    senior: "シニア",
+    lead: "リード"
+  }[level] || level;
 }
 
 function resizeOverviewCanvas() {
@@ -680,6 +860,8 @@ function renderBreachDemo() {
     ].join("")
     : `<div><strong>未選択</strong><span>シナリオをONにしてください</span></div>`;
   qs("#breachImpact").innerHTML = postureLabels.map((label, index) => `<div><strong>${label}</strong><span>-${postureBaseline[index] - impact[index]}pt</span></div>`).join("");
+  qs("#breachControlExplanation").innerHTML = renderControlExplanation(cascade, active);
+  qs("#breachPostureExplanation").innerHTML = renderPostureExplanation(postureBaseline, impact, "breach");
   drawBreachChain(qs("#breachChainCanvas"), active);
   drawRadar(qs("#breachRadarCanvas"), postureLabels, [
     { name: "平常時", values: postureBaseline, color: "#2563eb" },
@@ -733,6 +915,102 @@ function renderDecisionDemo() {
     { name: "現状", values: decisionBaseline, color: "#64748b" },
     { name: "投資後", values: after, color: "#16a34a" }
   ]);
+  qs("#decisionPostureExplanation").innerHTML = renderPostureExplanation(decisionBaseline, after, "decision");
+}
+
+function renderControlExplanation(cascade, active) {
+  const activeNamesByControl = active.reduce((map, item) => {
+    item.isms.forEach((control) => {
+      if (!map.has(control)) map.set(control, []);
+      map.get(control).push(item.name);
+    });
+    return map;
+  }, new Map());
+  const rows = cascade.layers.flatMap((layer) => layer.nodes
+    .filter((node) => node.label.startsWith("A."))
+    .map((node) => ({
+      id: node.label,
+      layer: layer.title,
+      status: node.status,
+      source: activeNamesByControl.get(node.label)?.join(" / ") || "前提管理策の不成立から波及",
+      description: controlDescriptions[node.label] || "この管理策の説明は整理中です。関連するプロセス、記録、上位フレームワークへの影響を確認してください。"
+    })));
+  if (!rows.length) {
+    return `
+      <section class="explanation-block">
+        <h3>不成立となった管理策</h3>
+        <p class="table-note">シナリオをONにすると、直接不成立と連鎖不成立に分けて表示します。</p>
+      </section>
+    `;
+  }
+  return `
+    <section class="explanation-block">
+      <h3>不成立となった管理策</h3>
+      ${renderControlTable("直接不成立", rows.filter((row) => row.status === "direct"))}
+      ${renderControlTable("連鎖不成立", rows.filter((row) => row.status === "cascade"))}
+    </section>
+  `;
+}
+
+function renderControlTable(title, rows) {
+  if (!rows.length) return "";
+  return `
+    <div class="explanation-section">
+      <h4>${title}</h4>
+      <table class="explanation-table">
+        <thead>
+          <tr><th>区分</th><th>管理策</th><th>層</th><th>説明</th><th>主な起点</th></tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              <td><span class="status-badge ${row.status}">${title}</span></td>
+              <td><strong>${row.id}</strong></td>
+              <td>${row.layer}</td>
+              <td>${row.description}</td>
+              <td>${row.source}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderPostureExplanation(before, after, mode) {
+  const isDecision = mode === "decision";
+  return `
+    <section class="explanation-block">
+      <h3>NISTカテゴリ説明</h3>
+      <p class="table-note">${postureScale}。点数は0-100のデモ値を5段階へ換算した目安です。</p>
+      <table class="explanation-table posture-table">
+        <thead>
+          <tr><th>カテゴリ</th><th>変化</th><th>5段階目安</th><th>説明</th></tr>
+        </thead>
+        <tbody>
+          ${postureLabels.map((label, index) => {
+            const delta = after[index] - before[index];
+            const score = postureLevel(after[index]);
+            const meta = postureDescriptions[label] || { name: label, description: "説明を整理中です。" };
+            const deltaClass = delta < 0 ? "negative" : delta > 0 ? "positive" : "neutral";
+            const deltaText = `${delta > 0 ? "+" : ""}${delta}pt`;
+            return `
+              <tr>
+                <td><strong>${label}</strong><span>${meta.name}</span></td>
+                <td><span class="delta-pill ${deltaClass}">${deltaText}</span></td>
+                <td>${score} / 5</td>
+                <td>${meta.description}${isDecision ? " 投資後の改善余地を経営判断に接続します。" : " 侵害パスにより低下したポスチャを確認します。"}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </section>
+  `;
+}
+
+function postureLevel(value) {
+  return Math.max(1, Math.min(5, Math.ceil(value / 20)));
 }
 
 function metric([label, value]) {
@@ -777,7 +1055,37 @@ function drawOverviewLinks(ctx) {
     ctx.moveTo(link.sourceNode.x, link.sourceNode.y);
     ctx.lineTo(link.targetNode.x, link.targetNode.y);
     ctx.stroke();
+    if (shouldShowRacivLinkLabel(link, active)) {
+      drawOverviewLinkLabel(ctx, link, active);
+    }
   });
+}
+
+function shouldShowRacivLinkLabel(link, active) {
+  const label = String(link.label || "");
+  const isRoleProcess = [link.sourceNode.type, link.targetNode.type].includes("role")
+    && [link.sourceNode.type, link.targetNode.type].includes("process");
+  return isRoleProcess && label.startsWith("RACIV:") && (active || state.overviewGraph.nodes.length <= 100);
+}
+
+function drawOverviewLinkLabel(ctx, link, active) {
+  const label = String(link.label || "").replace("RACIV:", "");
+  const x = (link.sourceNode.x + link.targetNode.x) / 2;
+  const y = (link.sourceNode.y + link.targetNode.y) / 2;
+  const meta = racivMeta[label] || { color: "#64748b" };
+  ctx.save();
+  ctx.font = "800 10px system-ui";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = active ? "#ffffff" : "rgba(255, 255, 255, 0.92)";
+  ctx.strokeStyle = meta.color;
+  ctx.lineWidth = 1;
+  roundRect(ctx, x - 13, y - 9, 26, 18, 9);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = meta.color;
+  ctx.fillText(label, x, y + 0.5);
+  ctx.restore();
 }
 
 function drawOverviewNodes(ctx) {
