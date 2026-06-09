@@ -10,31 +10,52 @@
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand" href="#overview" aria-label="Security Management Role & Process Demo">
+      <a class="brand" href="#graph" aria-label="Security Management Role & Process Demo">
         <span class="brand-mark"></span>
         <span>Security Management Role & Process Demo</span>
       </a>
       <nav class="nav-tabs" aria-label="表示切替">
-        <button class="tab-button is-active" data-tab="overview">概要</button>
+        <button class="tab-button is-active" data-tab="graph">Vaultグラフ</button>
+        <button class="tab-button" data-tab="overview">概要</button>
         <button class="tab-button" data-tab="demo-cost">工数算出</button>
         <button class="tab-button" data-tab="demo-breach">侵害パス</button>
         <button class="tab-button" data-tab="demo-executive">経営判断</button>
-        <button class="tab-button" data-tab="graph">Vaultグラフ</button>
         <button class="tab-button" data-tab="checklist">公開前確認</button>
       </nav>
     </div>
   </header>
 
   <main>
-    <section id="overview" class="tab-panel is-active">
+    <section id="graph" class="tab-panel is-active">
+      <div class="container graph-shell">
+        <div class="section-heading">
+          <p class="eyebrow">Graph View</p>
+          <h1>Security Vault グラフ概要</h1>
+          <p class="section-lead">役割、プロセス、記録、フレームワークが接続されていることを、Obsidianグラフに近い表現で確認します。役割とプロセスはRACIVでつなぐことが中核です。</p>
+        </div>
+        <div id="graphStats" class="overview-grid compact"></div>
+        <section class="panel graph-main-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Obsidian Style Graph</p>
+              <h2>役割 - RACIV - プロセス - 記録 - ISMS - 上位フレームワーク</h2>
+            </div>
+          </div>
+          <canvas id="vaultGraphCanvas" class="vault-graph-canvas" aria-label="Security Vault Obsidian風グラフ"></canvas>
+          <div id="graphLegend" class="graph-legend"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="overview" class="tab-panel">
       <div class="hero-band">
         <div class="container hero-content">
           <p id="heroEyebrow" class="eyebrow"></p>
           <h1 id="heroTitle"></h1>
           <p id="heroLead" class="lead"></p>
           <div class="hero-actions">
-            <button class="pill-button" data-tab-jump="demo-cost">デモを開く</button>
-            <button class="text-button" data-tab-jump="graph">Vaultグラフを見る</button>
+            <button class="pill-button" data-tab-jump="graph">Vaultグラフを見る</button>
+            <button class="text-button" data-tab-jump="demo-cost">工数算出を開く</button>
           </div>
         </div>
       </div>
@@ -58,9 +79,9 @@
           <div class="aside-block">
             <p class="aside-label">今回の更新点</p>
             <ul class="compact-list">
-              <li>記事文言を現在のVault構成へ更新</li>
-              <li>図解画像を再生成し、矢印と配置を整理</li>
-              <li>デモをタブ式にし、3ページを追加</li>
+              <li>概要画像を見切れない表示へ変更</li>
+              <li>Vaultグラフを最左タブへ移動</li>
+              <li>侵害シナリオとプロセス分類を拡張</li>
             </ul>
           </div>
         </aside>
@@ -71,31 +92,33 @@
       <div class="container demo-layout">
         <div class="section-heading">
           <p class="eyebrow">Demo 01</p>
-          <h2>役割・プロセスの工数算出</h2>
-          <p class="section-lead">プロセスに必要な人月と、役割別の人件費を連動させます。記録帳票を追加すると、証跡作成・承認・保管の負荷が加算されます。</p>
+          <h1>役割・プロセスの工数算出</h1>
+          <p class="section-lead">代表プロセスを7分類に分け、各分類の詳細プロセスを選択して、年間工数とプロセスに配賦される役割別人件費を確認します。</p>
         </div>
-        <div id="costProcessTabs" class="local-tabs" aria-label="プロセス選択"></div>
+        <div id="costProcessGroups" class="process-group-grid" aria-label="代表プロセス分類"></div>
         <div class="demo-grid two">
           <section class="panel">
             <div class="panel-head">
               <div>
                 <p class="eyebrow">Process Cost</p>
-                <h3 id="costProcessTitle">-</h3>
+                <h2 id="costProcessTitle">-</h2>
               </div>
               <button id="recordsToggle" class="toggle-button" aria-pressed="true">記録帳票 ON</button>
             </div>
             <div id="costSummary" class="metric-grid"></div>
-            <canvas id="processCostCanvas" class="chart-canvas" aria-label="プロセス別工数グラフ"></canvas>
+            <canvas id="processCostCanvas" class="chart-canvas" aria-label="プロセス別年間費用グラフ"></canvas>
+            <p class="calc-note">算出注記: 年間人月は代表プロセス内の詳細プロセス工数を合算しています。概算人件費は「役割単価/年 × 当該プロセスへの関与率」で配賦した説明用概算です。表示される役割別人件費は、その役割を雇用する総額ではなく、このプロセスにかかる配賦分です。</p>
           </section>
           <section class="panel">
             <div class="panel-head">
               <div>
                 <p class="eyebrow">Role Cost</p>
-                <h3>役割別人件費</h3>
+                <h2>役割別人件費 / 年</h2>
               </div>
             </div>
             <div id="roleCostLegend" class="legend-row"></div>
-            <canvas id="roleCostCanvas" class="chart-canvas" aria-label="役割別人件費グラフ"></canvas>
+            <div id="roleRacivMatrix" class="raciv-role-grid" aria-label="RACIV別役割人件費"></div>
+            <canvas id="roleCostCanvas" class="chart-canvas" aria-label="役割別年間人件費グラフ"></canvas>
           </section>
         </div>
       </div>
@@ -105,25 +128,26 @@
       <div class="container demo-layout">
         <div class="section-heading">
           <p class="eyebrow">Demo 02</p>
-          <h2>侵害パスとポスチャ低下</h2>
-          <p class="section-lead">CVE発行や侵害イベントを起点に、下位フレームワーク未成立、ISMS未成立、上位フレームワークのポスチャ低下までをストーリーで追います。</p>
+          <h1>侵害パスとポスチャ低下</h1>
+          <p class="section-lead">20個の侵害シナリオを複数同時にONにできます。下位フレームワークの未成立がISMSへ変換され、さらにNIST CSF / AI RMFなどの上位フレームワークへ波及する様子を確認します。</p>
         </div>
-        <div id="breachStoryTabs" class="local-tabs dense" aria-label="侵害ストーリー選択"></div>
-        <div class="demo-grid two">
+        <div id="breachScenarioSwitches" class="scenario-switch-grid" aria-label="侵害シナリオ切替"></div>
+        <div class="demo-grid two wide-left">
           <section class="panel">
             <div class="panel-head">
               <div>
-                <p class="eyebrow">Breach Path</p>
-                <h3 id="breachTitle">-</h3>
+                <p class="eyebrow">ISMS Chain Graph</p>
+                <h2>未成立の連鎖</h2>
               </div>
             </div>
-            <div id="breachFlow" class="flow-stack"></div>
+            <canvas id="breachChainCanvas" class="chain-canvas" aria-label="ISMS連鎖グラフ"></canvas>
+            <div id="breachActiveSummary" class="impact-list"></div>
           </section>
           <section class="panel">
             <div class="panel-head">
               <div>
                 <p class="eyebrow">Posture Radar</p>
-                <h3>CSF / AI RMF 影響</h3>
+                <h2>上位フレームワーク影響</h2>
               </div>
             </div>
             <canvas id="breachRadarCanvas" class="radar-canvas" aria-label="侵害前後のポスチャレーダーチャート"></canvas>
@@ -137,24 +161,24 @@
       <div class="container demo-layout">
         <div class="section-heading">
           <p class="eyebrow">Demo 03</p>
-          <h2>経営判断と投資効果</h2>
-          <p class="section-lead">プロセスをダブルクリックで追加・除外し、役割追加、人件費、CSF/AI RMFポスチャ改善を同時に確認します。</p>
+          <h1>経営判断と投資効果</h1>
+          <p class="section-lead">代表プロセスをクリックすると詳細プロセスがまとめてON/OFFされ、詳細プロセスをクリックすると個別にON/OFFできます。追加役割、年間費用、CSF / AI RMF改善を連動表示します。</p>
         </div>
         <div class="demo-grid two">
           <section class="panel">
             <div class="panel-head">
               <div>
                 <p class="eyebrow">Decision Board</p>
-                <h3>追加候補プロセス</h3>
+                <h2>追加候補プロセス</h2>
               </div>
             </div>
-            <div id="decisionProcessGrid" class="decision-grid"></div>
+            <div id="decisionProcessGrid" class="process-group-grid"></div>
           </section>
           <section class="panel">
             <div class="panel-head">
               <div>
                 <p class="eyebrow">Executive View</p>
-                <h3>コストとポスチャ改善</h3>
+                <h2>コストとポスチャ改善</h2>
               </div>
             </div>
             <div id="decisionCostCards" class="metric-grid"></div>
@@ -164,31 +188,11 @@
       </div>
     </section>
 
-    <section id="graph" class="tab-panel">
-      <div class="container graph-shell">
-        <div class="section-heading">
-          <p class="eyebrow">Graph View</p>
-          <h2>Security Vault グラフ概要</h2>
-          <p class="section-lead">公開デモではVault全体を直接公開せず、ノード種別と接続の概要だけを確認できるようにしています。</p>
-        </div>
-        <div id="graphStats" class="overview-grid compact"></div>
-        <section class="panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Relationship Map</p>
-              <h3>管理策・プロセス・役割の代表接続</h3>
-            </div>
-          </div>
-          <canvas id="graphCanvas" class="graph-canvas" aria-label="Vault概要グラフ"></canvas>
-        </section>
-      </div>
-    </section>
-
     <section id="checklist" class="tab-panel">
       <div class="container checklist-layout">
         <div>
           <p class="eyebrow">Before Publishing</p>
-          <h2>公開前確認</h2>
+          <h1>公開前確認</h1>
           <p class="section-lead">DOCSは独立管理の公開用デモとして、Vault本体の内部情報を直接出さない前提で確認します。</p>
         </div>
         <div id="checklistItems" class="checklist-grid"></div>
@@ -202,6 +206,6 @@
       <span>Demo data generated from Security Vault structure.</span>
     </div>
   </footer>
-  <script src="./app.js"></script>
+  <script src="./app.js?v=20260609-raciv-cost"></script>
 </body>
 </html>
