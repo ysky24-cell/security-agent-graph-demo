@@ -86,12 +86,13 @@ button {
 .pill-button,
 .text-button,
 .toggle-button {
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
   background: #fff;
   color: var(--ink);
   padding: 9px 14px;
   min-height: 40px;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .tab-button.is-active,
@@ -99,8 +100,20 @@ button {
 .pill-button,
 .toggle-button[aria-pressed="true"] {
   border-color: var(--blue);
-  background: var(--blue);
-  color: #fff;
+  background: #e8f0ff;
+  color: #1746b7;
+  box-shadow: inset 0 -2px 0 var(--blue);
+}
+
+.tab-button:hover,
+.local-tab:hover,
+.pill-button:hover,
+.toggle-button:hover,
+.detail-chip:hover,
+.scenario-switch:hover,
+.process-group-head:hover {
+  border-color: #b8c8e4;
+  background: #f8fbff;
 }
 
 .text-button {
@@ -245,7 +258,7 @@ button {
 
 .article-card {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 360px minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -253,7 +266,8 @@ button {
   width: 100%;
   height: 100%;
   min-height: 220px;
-  object-fit: cover;
+  object-fit: contain;
+  padding: 8px;
   background: var(--soft);
 }
 
@@ -421,12 +435,12 @@ button {
 }
 
 .vault-graph-canvas {
-  height: 560px;
+  height: 680px;
   background: radial-gradient(circle at 50% 50%, #ffffff 0%, #f8fafc 62%, #eef4fb 100%);
 }
 
 .chain-canvas {
-  height: 520px;
+  height: 640px;
 }
 
 .graph-main-panel {
@@ -576,36 +590,41 @@ button {
 .process-group-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 22px;
 }
 
 .process-group-card {
-  border: 1px solid var(--line);
+  border: 1px solid #d7e3f4;
   border-radius: var(--radius);
-  background: #fff;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   overflow: hidden;
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
 }
 
 .process-group-card.is-active {
-  border-color: #93b7ff;
+  border-color: #7ba7f8;
+  box-shadow: 0 16px 36px rgba(37, 99, 235, 0.12);
 }
 
 .process-group-head {
   display: grid;
   gap: 4px;
   width: 100%;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border: 0;
   border-bottom: 1px solid var(--line);
-  background: #f8fafc;
+  background: linear-gradient(180deg, #ffffff 0%, #eef5ff 100%);
   text-align: left;
+}
+
+.process-group-head.static {
+  cursor: default;
 }
 
 .process-group-head strong {
   color: var(--ink);
-  font-size: 16px;
+  font-size: 17px;
 }
 
 .process-group-head span {
@@ -613,21 +632,48 @@ button {
   font-size: 12px;
 }
 
+.process-group-head em {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #e8f0ff;
+  color: #1746b7;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .detail-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
 }
 
 .detail-chip,
 .scenario-switch {
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  position: relative;
+  border: 1px solid #d8e3f2;
+  border-radius: var(--radius);
   background: #fff;
   color: var(--ink);
-  padding: 8px 11px;
+  padding: 10px 12px 10px 28px;
   text-align: left;
+  min-height: 48px;
+}
+
+.detail-chip::before,
+.scenario-switch::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #b7c5d8;
+  border-radius: 999px;
+  transform: translateY(-50%);
 }
 
 .detail-chip.is-active {
@@ -637,18 +683,31 @@ button {
   font-weight: 700;
 }
 
+.detail-chip.is-active::before,
+.scenario-switch.is-active::before {
+  border-color: var(--blue);
+  background: var(--blue);
+}
+
 .scenario-switch-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+#decisionProcessGrid {
+  grid-template-columns: 1fr;
 }
 
 .scenario-switch {
   display: grid;
   gap: 2px;
-  border-radius: var(--radius);
-  min-height: 64px;
+  min-height: 66px;
+}
+
+.scenario-detail-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .scenario-switch span {
@@ -667,6 +726,11 @@ button {
   color: #991b1b;
 }
 
+.scenario-switch.is-active::before {
+  border-color: var(--red);
+  background: var(--red);
+}
+
 .calc-note {
   margin-top: 14px;
   padding: 12px 14px;
@@ -678,7 +742,7 @@ button {
 }
 
 .demo-grid.two.wide-left {
-  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+  grid-template-columns: 1fr;
 }
 
 .decision-card {
@@ -755,7 +819,9 @@ button {
   .metric-grid,
   .checklist-grid,
   .process-group-grid,
-  .scenario-switch-grid {
+  .scenario-switch-grid,
+  .detail-chip-row,
+  .scenario-detail-row {
     grid-template-columns: 1fr;
   }
 

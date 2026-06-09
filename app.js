@@ -115,6 +115,23 @@ const breachScenarios = [
   breach("audit-failure", "監査証跡不備", "監査", ["証跡台帳なし", "是正追跡なし"], ["A.5.35", "A.5.36", "A.8.15"], ["委託先監査", "再発防止レビュー"], ["CSF GV.OV", "CSF ID.IM"], [9, 5, 4, 6, 6, 4, 2, 2])
 ];
 
+const breachScenarioGroups = [
+  scenarioGroup("identity", "ID・人の侵害", "認証、権限、メール、内部不正を扱う分類", ["id-compromise", "phishing", "insider", "email-bec"]),
+  scenarioGroup("operations", "運用・検知の侵害", "監視、ログ、初動、復旧の不足を扱う分類", ["detection-gap", "log-missing", "backup-failure", "ransomware"]),
+  scenarioGroup("technology", "技術・脆弱性の侵害", "CVE、クラウド、API、秘密情報を扱う分類", ["component-cve", "cloud-misconfig", "api-abuse", "secrets-leak"]),
+  scenarioGroup("thirdparty", "委託・監査の侵害", "外部委託、証跡、監査不備を扱う分類", ["supplier-breach", "audit-failure"]),
+  scenarioGroup("data-ai", "データ・AIの侵害", "個人情報、AI、生成AIのリスクを扱う分類", ["ai-data-leak", "privacy-complaint", "model-poisoning", "prompt-injection"]),
+  scenarioGroup("endpoint", "端末・拡張機能の侵害", "ローカルアプリ、ブラウザ拡張、端末制御を扱う分類", ["local-app", "extension-risk"])
+];
+
+const ismsCascadeLayers = [
+  ismsLayer("L1 前提統制", ["A.5.3", "A.5.10", "A.5.14", "A.5.15", "A.5.19", "A.5.20", "A.5.22", "A.5.23", "A.6.3", "A.8.1", "A.8.2", "A.8.3", "A.8.5"]),
+  ismsLayer("L2 技術・運用統制", ["A.8.7", "A.8.8", "A.8.9", "A.8.11", "A.8.12", "A.8.13", "A.8.15", "A.8.16", "A.8.17", "A.8.19", "A.8.23", "A.8.24", "A.8.25", "A.8.26", "A.8.28", "A.8.31", "A.8.32"]),
+  ismsLayer("L3 検知・対応統制", ["A.5.24", "A.5.28", "A.5.29", "A.5.30", "A.8.15", "A.8.16", "A.8.17"]),
+  ismsLayer("L4 証跡・是正統制", ["A.5.31", "A.5.33", "A.5.34", "A.5.35", "A.5.36", "A.5.37"]),
+  ismsLayer("L5 経営判断ポスチャ", ["CSF GV", "CSF ID", "CSF PR", "CSF DE", "CSF RS", "CSF RC", "AI RMF"])
+];
+
 const decisionGroups = costProcessGroups.map((groupItem) => ({
   id: groupItem.id,
   name: groupItem.name,
@@ -164,6 +181,14 @@ function breach(id, name, category, lower, isms, processes, frameworks, impact) 
   return { id, name, category, lower, isms, processes, frameworks, impact };
 }
 
+function scenarioGroup(id, name, description, scenarioIds) {
+  return { id, name, description, scenarioIds };
+}
+
+function ismsLayer(title, controls) {
+  return { title, controls };
+}
+
 function decisionImproveFor(id) {
   const base = {
     "identity-governance": [8, 5, 5, 4, 3, 2, 1, 1],
@@ -189,7 +214,7 @@ function yen(value) {
 }
 
 async function init() {
-  state.content = await fetch("./content.json").then((res) => res.json());
+  state.content = await fetch("./content.json?v=20260609-organization-graph").then((res) => res.json());
   renderContent();
   bindTabs();
   renderGraph();
@@ -359,9 +384,24 @@ function summarizeDetails(details) {
 }
 
 function renderBreachDemo() {
-  qs("#breachScenarioSwitches").innerHTML = breachScenarios.map((item) => {
-    const active = state.activeBreachIds.has(item.id);
-    return `<button class="scenario-switch ${active ? "is-active" : ""}" data-breach-id="${item.id}"><span>${item.category}</span><strong>${item.name}</strong></button>`;
+  qs("#breachScenarioSwitches").innerHTML = breachScenarioGroups.map((groupItem) => {
+    const scenarios = groupItem.scenarioIds.map((id) => breachScenarios.find((item) => item.id === id)).filter(Boolean);
+    const activeCount = scenarios.filter((item) => state.activeBreachIds.has(item.id)).length;
+    return `
+      <section class="process-group-card scenario-group-card ${activeCount ? "is-active" : ""}">
+        <div class="process-group-head static">
+          <strong>${groupItem.name}</strong>
+          <span>${groupItem.description}</span>
+          <em>${activeCount}/${scenarios.length} ON</em>
+        </div>
+        <div class="detail-chip-row scenario-detail-row">
+          ${scenarios.map((item) => {
+            const active = state.activeBreachIds.has(item.id);
+            return `<button class="scenario-switch ${active ? "is-active" : ""}" data-breach-id="${item.id}"><span>${item.category}</span><strong>${item.name}</strong></button>`;
+          }).join("")}
+        </div>
+      </section>
+    `;
   }).join("");
   qsa("[data-breach-id]").forEach((button) => button.addEventListener("click", () => {
     const id = button.dataset.breachId;
@@ -371,8 +411,12 @@ function renderBreachDemo() {
   }));
   const active = breachScenarios.filter((item) => state.activeBreachIds.has(item.id));
   const impact = postureBaseline.map((value, index) => Math.max(20, value - active.reduce((sum, item) => sum + item.impact[index], 0)));
+  const cascade = buildIsmsCascade(active);
   qs("#breachActiveSummary").innerHTML = active.length
-    ? active.map((item) => `<div><strong>${item.name}</strong><span>${item.isms.join(" / ")}</span></div>`).join("")
+    ? [
+      ...active.map((item) => `<div><strong>${item.name}</strong><span>${item.isms.join(" / ")}</span></div>`),
+      `<div><strong>ISMS連鎖</strong><span>${cascade.impactedLayerCount}層 / ${cascade.impactedControlCount}件が不成立</span></div>`
+    ].join("")
     : `<div><strong>未選択</strong><span>シナリオをONにしてください</span></div>`;
   qs("#breachImpact").innerHTML = postureLabels.map((label, index) => `<div><strong>${label}</strong><span>-${postureBaseline[index] - impact[index]}pt</span></div>`).join("");
   drawBreachChain(qs("#breachChainCanvas"), active);
@@ -449,12 +493,12 @@ function drawVaultGraph(canvas) {
   if (width < 120 || height < 120) return;
   ctx.clearRect(0, 0, width, height);
   const nodes = [
-    ...nodeGroup(["CISO", "CAIO", "CSIRT", "SOC", "監査", "AI専門家"], "role", 0.18, height),
-    ...nodeGroup(["R", "A", "C", "I", "V"], "raciv", 0.34, height),
-    ...nodeGroup(["監視", "脆弱性管理", "インシデント対応", "AIリスク管理", "委託先管理", "BCP"], "process", 0.50, height),
-    ...nodeGroup(["判断ログ", "監査調書", "台帳", "是正記録"], "record", 0.66, height),
-    ...nodeGroup(["ISMS A.5", "ISMS A.8", "ISMS規格項番"], "isms", 0.80, height),
-    ...nodeGroup(["NIST CSF", "AI RMF", "OWASP", "SCS"], "framework", 0.92, height)
+    ...nodeGroup(["CISO", "CAIO", "CSIRT", "SOC", "監査", "AI専門家"], "role", 0.08, height),
+    ...nodeGroup(["R", "A", "C", "I", "V"], "raciv", 0.25, height),
+    ...nodeGroup(["監視", "脆弱性管理", "インシデント対応", "AIリスク管理", "委託先管理", "BCP"], "process", 0.43, height),
+    ...nodeGroup(["判断ログ", "監査調書", "台帳", "是正記録"], "record", 0.61, height),
+    ...nodeGroup(["ISMS A.5", "ISMS A.8", "ISMS規格項番"], "isms", 0.78, height),
+    ...nodeGroup(["NIST CSF", "AI RMF", "OWASP", "SCS"], "framework", 0.93, height)
   ].map((node, index) => ({ ...node, id: index, x: node.x * width }));
   const links = [];
   nodes.filter((n) => n.type === "role").forEach((role) => nodes.filter((n) => n.type === "raciv").forEach((r) => links.push([role, r, 0.12])));
@@ -464,7 +508,7 @@ function drawVaultGraph(canvas) {
   nodes.filter((n) => n.type === "isms").forEach((i) => nodes.filter((n) => n.type === "framework").forEach((f) => links.push([i, f, 0.22])));
   links.forEach(([from, to, alpha]) => {
     ctx.strokeStyle = rgba("#94a3b8", alpha);
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
     ctx.bezierCurveTo((from.x + to.x) / 2, from.y, (from.x + to.x) / 2, to.y, to.x, to.y);
@@ -483,48 +527,122 @@ function drawBreachChain(canvas, active) {
   if (width < 120 || height < 120) return;
   ctx.clearRect(0, 0, width, height);
   const activeLower = unique(active.flatMap((item) => item.lower)).slice(0, 10);
-  const activeIsms = unique(active.flatMap((item) => item.isms)).slice(0, 10);
-  const activeProcesses = unique(active.flatMap((item) => item.processes)).slice(0, 10);
-  const activeFrameworks = unique(active.flatMap((item) => item.frameworks)).slice(0, 8);
+  const activeProcesses = unique(active.flatMap((item) => item.processes)).slice(0, 6);
+  const activeFrameworks = unique(active.flatMap((item) => item.frameworks)).slice(0, 6);
+  const cascade = buildIsmsCascade(active);
   const columns = [
-    ["下位FW未成立", activeLower, colors.framework],
-    ["ISMS中間層", activeIsms, colors.isms],
-    ["後続プロセス未成立", activeProcesses, colors.process],
-    ["経営ポスチャ低下", activeFrameworks, colors.role]
+    { title: "下位トリガー", nodes: activeLower.map((label) => ({ label, status: "direct" })) },
+    ...cascade.layers,
+    { title: "後続プロセス", nodes: activeProcesses.map((label) => ({ label, status: "cascade" })) },
+    { title: "上位ポスチャ", nodes: activeFrameworks.map((label) => ({ label, status: "cascade" })) }
   ];
-  columns.forEach(([title, items, color], col) => {
-    const x = width * (0.12 + col * 0.25);
+  const xGap = width / Math.max(columns.length, 1);
+  columns.forEach((column, col) => {
+    const x = xGap * col + xGap / 2;
     ctx.fillStyle = colors.ink;
-    ctx.font = "700 14px system-ui";
+    ctx.font = "700 13px system-ui";
     ctx.textAlign = "center";
-    ctx.fillText(title, x, 28);
-    const gap = Math.min(42, (height - 80) / Math.max(items.length, 1));
-    items.forEach((label, row) => drawGraphNode(ctx, { label, x, y: 72 + row * gap, type: "process" }, color, 5));
+    ctx.fillText(column.title, x, 26);
+    const items = column.nodes.length ? column.nodes.slice(0, 6) : [{ label: "未影響", status: "inactive" }];
+    const gap = Math.min(54, (height - 92) / Math.max(items.length, 1));
+    items.forEach((item, row) => {
+      drawCascadeNode(ctx, { ...item, x, y: 72 + row * gap });
+    });
   });
+  drawCascadeLegend(ctx, width);
   for (let col = 0; col < columns.length - 1; col++) {
-    const fromItems = columns[col][1];
-    const toItems = columns[col + 1][1];
+    const fromItems = columns[col].nodes.length ? columns[col].nodes.slice(0, 6) : [{ label: "未影響", status: "inactive" }];
+    const toItems = columns[col + 1].nodes.length ? columns[col + 1].nodes.slice(0, 6) : [{ label: "未影響", status: "inactive" }];
     fromItems.forEach((_, row) => {
-      const from = { x: width * (0.12 + col * 0.25) + 58, y: 72 + row * Math.min(42, (height - 80) / Math.max(fromItems.length, 1)) };
-      const to = { x: width * (0.12 + (col + 1) * 0.25) - 58, y: 72 + (row % Math.max(toItems.length, 1)) * Math.min(42, (height - 80) / Math.max(toItems.length, 1)) };
-      arrow(ctx, from, to, "#94a3b8");
+      const fromX = xGap * col + xGap / 2 + 46;
+      const toX = xGap * (col + 1) + xGap / 2 - 46;
+      const fromY = 72 + row * Math.min(54, (height - 92) / Math.max(fromItems.length, 1));
+      const toY = 72 + (row % Math.max(toItems.length, 1)) * Math.min(54, (height - 92) / Math.max(toItems.length, 1));
+      arrow(ctx, { x: fromX, y: fromY }, { x: toX, y: toY }, col < cascade.firstCascadeColumn ? "#cbd5e1" : "#f97316");
     });
   }
+}
+
+function drawCascadeLegend(ctx, width) {
+  const items = [
+    ["直接不成立", "#dc2626"],
+    ["連鎖不成立", "#f97316"],
+    ["未影響", "#94a3b8"]
+  ];
+  const startX = Math.max(18, width - 300);
+  items.forEach(([label, color], index) => {
+    const x = startX + index * 96;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, 42, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#64748b";
+    ctx.font = "700 11px system-ui";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 9, 46);
+  });
+}
+
+function buildIsmsCascade(active) {
+  const directControls = new Set(unique(active.flatMap((item) => item.isms)));
+  const directLayerIndexes = ismsCascadeLayers
+    .map((layer, index) => layer.controls.some((control) => directControls.has(control)) ? index : -1)
+    .filter((index) => index >= 0);
+  const firstImpactedLayer = directLayerIndexes.length ? Math.min(...directLayerIndexes) : -1;
+  const layers = ismsCascadeLayers.map((layer, index) => {
+    const direct = layer.controls.filter((control) => directControls.has(control)).map((label) => ({ label, status: "direct" }));
+    const cascaded = firstImpactedLayer >= 0 && index > firstImpactedLayer
+      ? layer.controls.filter((control) => !directControls.has(control)).slice(0, 4 - direct.length).map((label) => ({ label, status: "cascade" }))
+      : [];
+    return { title: layer.title, nodes: [...direct, ...cascaded] };
+  });
+  const impacted = layers.flatMap((layer) => layer.nodes).filter((node) => node.status !== "inactive");
+  return {
+    layers,
+    firstCascadeColumn: firstImpactedLayer < 0 ? Number.MAX_SAFE_INTEGER : firstImpactedLayer,
+    impactedLayerCount: layers.filter((layer) => layer.nodes.length).length,
+    impactedControlCount: impacted.length
+  };
+}
+
+function drawCascadeNode(ctx, node) {
+  const paletteByStatus = {
+    direct: { fill: "#fee2e2", border: "#dc2626", dot: "#dc2626", text: "#7f1d1d" },
+    cascade: { fill: "#fffbeb", border: "#f97316", dot: "#f97316", text: "#78350f" },
+    inactive: { fill: "#f8fafc", border: "#cbd5e1", dot: "#94a3b8", text: "#64748b" }
+  };
+  const style = paletteByStatus[node.status] || paletteByStatus.inactive;
+  const width = 92;
+  const height = 34;
+  ctx.fillStyle = style.fill;
+  ctx.strokeStyle = style.border;
+  ctx.lineWidth = 1.4;
+  roundRect(ctx, node.x - width / 2, node.y - height / 2, width, height, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = style.dot;
+  ctx.beginPath();
+  ctx.arc(node.x - width / 2 + 12, node.y, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = style.text;
+  ctx.font = "700 11px system-ui";
+  ctx.textAlign = "center";
+  ctx.fillText(node.label, node.x + 7, node.y + 4);
 }
 
 function unique(items) {
   return [...new Set(items)];
 }
 
-function drawGraphNode(ctx, node, color, radius = 7) {
+function drawGraphNode(ctx, node, color, radius = 10) {
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = colors.ink;
-  ctx.font = "12px system-ui";
+  ctx.font = "13px system-ui";
   ctx.textAlign = "center";
-  ctx.fillText(node.label, node.x, node.y + 22);
+  ctx.fillText(node.label, node.x, node.y + 27);
 }
 
 function drawBars(canvas, data, unit) {

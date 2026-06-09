@@ -10,13 +10,13 @@
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand" href="#graph" aria-label="Security Management Role & Process Demo">
+      <a class="brand" href="#overview" aria-label="Security Management Role & Process Demo">
         <span class="brand-mark"></span>
         <span>Security Management Role & Process Demo</span>
       </a>
       <nav class="nav-tabs" aria-label="表示切替">
-        <button class="tab-button is-active" data-tab="graph">Vaultグラフ</button>
-        <button class="tab-button" data-tab="overview">概要</button>
+        <button class="tab-button is-active" data-tab="overview">概要</button>
+        <button class="tab-button" data-tab="graph">セキュリティ組織グラフ</button>
         <button class="tab-button" data-tab="demo-cost">工数算出</button>
         <button class="tab-button" data-tab="demo-breach">侵害パス</button>
         <button class="tab-button" data-tab="demo-executive">経営判断</button>
@@ -26,11 +26,11 @@
   </header>
 
   <main>
-    <section id="graph" class="tab-panel is-active">
+    <section id="graph" class="tab-panel">
       <div class="container graph-shell">
         <div class="section-heading">
           <p class="eyebrow">Graph View</p>
-          <h1>Security Vault グラフ概要</h1>
+          <h1>セキュリティ組織グラフ概要</h1>
           <p class="section-lead">役割、プロセス、記録、フレームワークが接続されていることを、Obsidianグラフに近い表現で確認します。役割とプロセスはRACIVでつなぐことが中核です。</p>
         </div>
         <div id="graphStats" class="overview-grid compact"></div>
@@ -41,20 +41,20 @@
               <h2>役割 - RACIV - プロセス - 記録 - ISMS - 上位フレームワーク</h2>
             </div>
           </div>
-          <canvas id="vaultGraphCanvas" class="vault-graph-canvas" aria-label="Security Vault Obsidian風グラフ"></canvas>
+          <canvas id="vaultGraphCanvas" class="vault-graph-canvas" aria-label="セキュリティ組織グラフ"></canvas>
           <div id="graphLegend" class="graph-legend"></div>
         </section>
       </div>
     </section>
 
-    <section id="overview" class="tab-panel">
+    <section id="overview" class="tab-panel is-active">
       <div class="hero-band">
         <div class="container hero-content">
           <p id="heroEyebrow" class="eyebrow"></p>
           <h1 id="heroTitle"></h1>
           <p id="heroLead" class="lead"></p>
           <div class="hero-actions">
-            <button class="pill-button" data-tab-jump="graph">Vaultグラフを見る</button>
+            <button class="pill-button" data-tab-jump="graph">セキュリティ組織グラフを見る</button>
             <button class="text-button" data-tab-jump="demo-cost">工数算出を開く</button>
           </div>
         </div>
@@ -80,7 +80,7 @@
             <p class="aside-label">今回の更新点</p>
             <ul class="compact-list">
               <li>概要画像を見切れない表示へ変更</li>
-              <li>Vaultグラフを最左タブへ移動</li>
+              <li>セキュリティ組織グラフを概要の右へ配置</li>
               <li>侵害シナリオとプロセス分類を拡張</li>
             </ul>
           </div>
@@ -193,7 +193,7 @@
         <div>
           <p class="eyebrow">Before Publishing</p>
           <h1>公開前確認</h1>
-          <p class="section-lead">DOCSは独立管理の公開用デモとして、Vault本体の内部情報を直接出さない前提で確認します。</p>
+          <p class="section-lead">DOCSは独立管理の公開用デモとして、元文書群の内部情報を直接出さない前提で確認します。</p>
         </div>
         <div id="checklistItems" class="checklist-grid"></div>
       </div>
@@ -203,9 +203,9 @@
   <footer class="site-footer">
     <div class="container footer-inner">
       <span>Security Management Role & Process Demo</span>
-      <span>Demo data generated from Security Vault structure.</span>
+      <span>Demo data generated from security organization structure.</span>
     </div>
   </footer>
-  <script src="./app.js?v=20260609-raciv-cost"></script>
+  <script src="./app.js?v=20260609-organization-graph"></script>
 </body>
 </html>
