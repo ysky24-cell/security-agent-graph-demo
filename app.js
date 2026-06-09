@@ -11,6 +11,22 @@ const colors = {
 
 const state = {
   content: null,
+  graphData: null,
+  overviewGraph: {
+    nodes: [],
+    links: [],
+    visibleTypes: new Set(["center", "control", "process", "role", "cost_model"]),
+    search: "",
+    selected: null,
+    hovered: null,
+    dragging: null,
+    panning: null,
+    offsetX: 0,
+    offsetY: 0,
+    scale: 1,
+    animation: null,
+    bound: false
+  },
   selectedCostGroup: "ops",
   selectedCostDetail: "continuous-monitoring",
   includeRecords: true,
@@ -214,7 +230,12 @@ function yen(value) {
 }
 
 async function init() {
-  state.content = await fetch("./content.json?v=20260609-organization-graph").then((res) => res.json());
+  const [content, graphData] = await Promise.all([
+    fetch("./content.json?v=20260609-organization-graph").then((res) => res.json()),
+    fetch("./graph.json?v=20260609-force-graph").then((res) => res.json())
+  ]);
+  state.content = content;
+  state.graphData = graphData;
   renderContent();
   bindTabs();
   renderGraph();
@@ -275,21 +296,261 @@ function renderVisibleCharts() {
 }
 
 function renderGraph() {
+  if (!state.graphData) return;
+  const counts = state.graphData.meta?.counts || {};
   qs("#graphStats").innerHTML = [
-    ["役割", "CISO、CAIO、CSIRT、SOC、監査、AI専門家"],
-    ["RACIV", "役割とプロセスを責任、説明、助言、通知、検証で接続"],
-    ["記録", "判断ログ、監査調書、台帳、是正記録が証跡になる"],
-    ["フレームワーク", "下位要求をISMSに変換し、CSF/AI RMFで経営判断へ渡す"]
+    ["ノード", `${state.graphData.nodes.length}件`],
+    ["リンク", `${state.graphData.links.length}件`],
+    ["初期表示", [...state.overviewGraph.visibleTypes].join(" / ")],
+    ["操作", "ドラッグ、ホイールズーム、クリック詳細、検索、種別フィルター"]
   ].map(([title, body]) => `<section class="overview-card"><h3>${title}</h3><p>${body}</p></section>`).join("");
-  qs("#graphLegend").innerHTML = [
-    ["役割", colors.role],
-    ["RACIV", colors.raciv],
-    ["プロセス", colors.process],
-    ["記録", colors.record],
-    ["ISMS", colors.isms],
-    ["上位FW", colors.framework]
-  ].map(([label, color]) => `<span><i style="background:${color}"></i>${label}</span>`).join("");
+  qs("#overviewGraphFilters").innerHTML = state.graphData.types.map((type) => `
+    <label class="graph-filter ${state.overviewGraph.visibleTypes.has(type.id) ? "is-active" : ""}">
+      <input type="checkbox" value="${type.id}" ${state.overviewGraph.visibleTypes.has(type.id) ? "checked" : ""}>
+      <span><i style="background:${type.color}"></i>${type.label}</span>
+      <small>${counts[type.id] || 0}</small>
+    </label>
+  `).join("");
+  qs("#graphLegend").innerHTML = state.graphData.types
+    .filter((type) => state.overviewGraph.visibleTypes.has(type.id))
+    .map((type) => `<span><i style="background:${type.color}"></i>${type.label}</span>`)
+    .join("");
+  bindOverviewGraphControls();
+  prepareOverviewGraph();
   drawVaultGraph(qs("#vaultGraphCanvas"));
+  renderOverviewNodeDetail(state.overviewGraph.selected);
+}
+
+function prepareOverviewGraph() {
+  const graph = state.overviewGraph;
+  const sourceNodes = state.graphData.nodes;
+  const sourceLinks = state.graphData.links;
+  const search = graph.search.trim().toLowerCase();
+  const visibleType = (node) => graph.visibleTypes.has(node.type);
+  const searchMatch = (node) => !search || [node.label, node.summary, node.path, ...(node.tags || [])].join(" ").toLowerCase().includes(search);
+  const visibleIds = new Set();
+  sourceNodes.forEach((node) => {
+    if (visibleType(node) && searchMatch(node)) visibleIds.add(node.id);
+  });
+  if (search) {
+    sourceLinks.forEach((link) => {
+      if (visibleIds.has(link.source)) visibleIds.add(link.target);
+      if (visibleIds.has(link.target)) visibleIds.add(link.source);
+    });
+  }
+  const oldById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const canvas = qs("#vaultGraphCanvas");
+  const rect = canvas.getBoundingClientRect();
+  graph.nodes = sourceNodes.filter((node) => visibleIds.has(node.id)).slice(0, search ? 120 : 80).map((node, index) => {
+    const old = oldById.get(node.id);
+    const angle = index * 2.399963;
+    const radius = 80 + index * 2.8;
+    return {
+      ...node,
+      x: old?.x ?? rect.width / 2 + Math.cos(angle) * radius,
+      y: old?.y ?? rect.height / 2 + Math.sin(angle) * radius,
+      vx: old?.vx ?? 0,
+      vy: old?.vy ?? 0,
+      fixed: node.type === "center",
+      searchHit: searchMatch(node) && Boolean(search)
+    };
+  });
+  const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
+  graph.links = sourceLinks
+    .filter((link) => nodesById.has(link.source) && nodesById.has(link.target))
+    .map((link) => ({ ...link, sourceNode: nodesById.get(link.source), targetNode: nodesById.get(link.target) }));
+  if (!graph.selected || !nodesById.has(graph.selected.id)) graph.selected = graph.nodes.find((node) => node.type === "center") || graph.nodes[0] || null;
+  if (graph.animation) cancelAnimationFrame(graph.animation);
+  simulateOverviewGraph();
+}
+
+function simulateOverviewGraph() {
+  const graph = state.overviewGraph;
+  const canvas = qs("#vaultGraphCanvas");
+  const rect = canvas.getBoundingClientRect();
+  const centerX = rect.width / 2;
+  const centerY = rect.height / 2;
+  graph.nodes.forEach((node) => {
+    if (node.fixed && !graph.dragging) {
+      node.x += (centerX - node.x) * 0.08;
+      node.y += (centerY - node.y) * 0.08;
+      node.vx *= 0.7;
+      node.vy *= 0.7;
+      return;
+    }
+    node.vx += (centerX - node.x) * 0.0009;
+    node.vy += (centerY - node.y) * 0.0009;
+  });
+  graph.links.forEach((link) => {
+    const source = link.sourceNode;
+    const target = link.targetNode;
+    const dx = target.x - source.x;
+    const dy = target.y - source.y;
+    const distance = Math.max(1, Math.hypot(dx, dy));
+    const desired = source.type === "center" || target.type === "center" ? 110 : 72;
+    const force = (distance - desired) * 0.006 * (link.strength || 1);
+    const fx = dx / distance * force;
+    const fy = dy / distance * force;
+    if (source !== graph.dragging) {
+      source.vx += fx;
+      source.vy += fy;
+    }
+    if (target !== graph.dragging) {
+      target.vx -= fx;
+      target.vy -= fy;
+    }
+  });
+  for (let i = 0; i < graph.nodes.length; i++) {
+    for (let j = i + 1; j < graph.nodes.length; j++) {
+      const a = graph.nodes[i];
+      const b = graph.nodes[j];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const distanceSq = Math.max(40, dx * dx + dy * dy);
+      const force = Math.min(1.8, 2200 / distanceSq);
+      const distance = Math.sqrt(distanceSq);
+      const fx = dx / distance * force;
+      const fy = dy / distance * force;
+      if (a !== graph.dragging) {
+        a.vx -= fx;
+        a.vy -= fy;
+      }
+      if (b !== graph.dragging) {
+        b.vx += fx;
+        b.vy += fy;
+      }
+    }
+  }
+  graph.nodes.forEach((node) => {
+    if (node === graph.dragging) return;
+    node.vx *= 0.86;
+    node.vy *= 0.86;
+    node.x += node.vx;
+    node.y += node.vy;
+    node.x = Math.max(24, Math.min(rect.width - 24, node.x));
+    node.y = Math.max(24, Math.min(rect.height - 24, node.y));
+  });
+  drawVaultGraph(canvas);
+  graph.animation = requestAnimationFrame(simulateOverviewGraph);
+}
+
+function bindOverviewGraphControls() {
+  const graph = state.overviewGraph;
+  if (!graph.bound) {
+    const canvas = qs("#vaultGraphCanvas");
+    qs("#overviewGraphSearch").addEventListener("input", (event) => {
+      graph.search = event.target.value;
+      prepareOverviewGraph();
+      renderGraph();
+    });
+    qs("#overviewGraphReset").addEventListener("click", () => {
+      graph.search = "";
+      graph.visibleTypes = new Set(state.graphData.meta?.initial_visible_types || ["center", "control", "process", "role", "cost_model"]);
+      graph.selected = null;
+      qs("#overviewGraphSearch").value = "";
+      renderGraph();
+    });
+    canvas.addEventListener("mousedown", (event) => {
+      const point = toOverviewGraphPoint(event);
+      const node = findOverviewNode(point.x, point.y);
+      if (node) {
+        graph.dragging = node;
+        graph.selected = node;
+        renderOverviewNodeDetail(node);
+      } else {
+        graph.panning = { x: event.clientX, y: event.clientY, offsetX: graph.offsetX, offsetY: graph.offsetY };
+      }
+    });
+    canvas.addEventListener("mousemove", (event) => {
+      const point = toOverviewGraphPoint(event);
+      if (graph.dragging) {
+        graph.dragging.x = point.x;
+        graph.dragging.y = point.y;
+        graph.dragging.vx = 0;
+        graph.dragging.vy = 0;
+      } else if (graph.panning) {
+        graph.offsetX = graph.panning.offsetX + event.clientX - graph.panning.x;
+        graph.offsetY = graph.panning.offsetY + event.clientY - graph.panning.y;
+      }
+      graph.hovered = findOverviewNode(point.x, point.y);
+      canvas.style.cursor = graph.dragging || graph.panning ? "grabbing" : graph.hovered ? "grab" : "move";
+    });
+    window.addEventListener("mouseup", () => {
+      graph.dragging = null;
+      graph.panning = null;
+    });
+    canvas.addEventListener("click", (event) => {
+      const point = toOverviewGraphPoint(event);
+      const node = findOverviewNode(point.x, point.y);
+      if (node) {
+        graph.selected = node;
+        renderOverviewNodeDetail(node);
+      }
+    });
+    canvas.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      graph.scale = Math.max(0.65, Math.min(1.8, graph.scale + (event.deltaY > 0 ? -0.08 : 0.08)));
+      drawVaultGraph(canvas);
+    }, { passive: false });
+    window.addEventListener("resize", resizeOverviewCanvas);
+    graph.bound = true;
+  }
+  qsa("#overviewGraphFilters input").forEach((input) => {
+    input.onchange = () => {
+      if (input.checked) graph.visibleTypes.add(input.value);
+      else graph.visibleTypes.delete(input.value);
+      graph.visibleTypes.add("center");
+      renderGraph();
+    };
+  });
+}
+
+function findOverviewNode(x, y) {
+  const graph = state.overviewGraph;
+  for (let index = graph.nodes.length - 1; index >= 0; index--) {
+    const node = graph.nodes[index];
+    const radius = overviewNodeRadius(node) + 5;
+    if (Math.hypot(node.x - x, node.y - y) <= radius) return node;
+  }
+  return null;
+}
+
+function toOverviewGraphPoint(event) {
+  const rect = qs("#vaultGraphCanvas").getBoundingClientRect();
+  const graph = state.overviewGraph;
+  return {
+    x: (event.clientX - rect.left - graph.offsetX) / graph.scale,
+    y: (event.clientY - rect.top - graph.offsetY) / graph.scale
+  };
+}
+
+function renderOverviewNodeDetail(node) {
+  const detail = qs("#overviewNodeDetail");
+  if (!node) {
+    detail.innerHTML = `<p class="eyebrow">Node Detail</p><h3>ノードを選択</h3><p>グラフ上のノードをクリックすると詳細を表示します。</p>`;
+    return;
+  }
+  const related = state.overviewGraph.links
+    .filter((link) => link.source === node.id || link.target === node.id)
+    .slice(0, 8)
+    .map((link) => link.source === node.id ? link.targetNode : link.sourceNode);
+  detail.innerHTML = `
+    <p class="eyebrow">Node Detail</p>
+    <h3>${node.label}</h3>
+    <p class="node-type">${overviewTypeLabel(node.type)}</p>
+    <p>${node.summary || "概要は未設定です。"}</p>
+    <dl class="node-detail-list">
+      <div><dt>種別</dt><dd>${node.type}</dd></div>
+      <div><dt>接続</dt><dd>${related.length}件</dd></div>
+      ${node.path ? `<div><dt>文書</dt><dd>${node.path}</dd></div>` : ""}
+    </dl>
+    ${node.tags?.length ? `<div class="tag-row">${node.tags.slice(0, 8).map((tag) => `<span>${tag}</span>`).join("")}</div>` : ""}
+    ${related.length ? `<h4>隣接ノード</h4><ul>${related.map((item) => `<li>${item.label}</li>`).join("")}</ul>` : ""}
+  `;
+}
+
+function resizeOverviewCanvas() {
+  prepareOverviewGraph();
 }
 
 function renderCostDemo() {
@@ -489,37 +750,77 @@ function setupCanvas(canvas) {
 }
 
 function drawVaultGraph(canvas) {
+  drawOverviewGraph(canvas);
+}
+
+function drawOverviewGraph(canvas) {
   const { ctx, width, height } = setupCanvas(canvas);
   if (width < 120 || height < 120) return;
   ctx.clearRect(0, 0, width, height);
-  const nodes = [
-    ...nodeGroup(["CISO", "CAIO", "CSIRT", "SOC", "監査", "AI専門家"], "role", 0.08, height),
-    ...nodeGroup(["R", "A", "C", "I", "V"], "raciv", 0.25, height),
-    ...nodeGroup(["監視", "脆弱性管理", "インシデント対応", "AIリスク管理", "委託先管理", "BCP"], "process", 0.43, height),
-    ...nodeGroup(["判断ログ", "監査調書", "台帳", "是正記録"], "record", 0.61, height),
-    ...nodeGroup(["ISMS A.5", "ISMS A.8", "ISMS規格項番"], "isms", 0.78, height),
-    ...nodeGroup(["NIST CSF", "AI RMF", "OWASP", "SCS"], "framework", 0.93, height)
-  ].map((node, index) => ({ ...node, id: index, x: node.x * width }));
-  const links = [];
-  nodes.filter((n) => n.type === "role").forEach((role) => nodes.filter((n) => n.type === "raciv").forEach((r) => links.push([role, r, 0.12])));
-  nodes.filter((n) => n.type === "raciv").forEach((r) => nodes.filter((n) => n.type === "process").forEach((p) => links.push([r, p, 0.20])));
-  nodes.filter((n) => n.type === "process").forEach((p) => nodes.filter((n) => n.type === "record").forEach((r) => links.push([p, r, 0.16])));
-  nodes.filter((n) => n.type === "record").forEach((r) => nodes.filter((n) => n.type === "isms").forEach((i) => links.push([r, i, 0.18])));
-  nodes.filter((n) => n.type === "isms").forEach((i) => nodes.filter((n) => n.type === "framework").forEach((f) => links.push([i, f, 0.22])));
-  links.forEach(([from, to, alpha]) => {
-    ctx.strokeStyle = rgba("#94a3b8", alpha);
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(from.x, from.y);
-    ctx.bezierCurveTo((from.x + to.x) / 2, from.y, (from.x + to.x) / 2, to.y, to.x, to.y);
-    ctx.stroke();
-  });
-  nodes.forEach((node) => drawGraphNode(ctx, node, colors[node.type]));
+  const graph = state.overviewGraph;
+  ctx.save();
+  ctx.translate(graph.offsetX, graph.offsetY);
+  ctx.scale(graph.scale, graph.scale);
+  drawOverviewLinks(ctx);
+  drawOverviewNodes(ctx);
+  ctx.restore();
 }
 
-function nodeGroup(labels, type, x, height) {
-  const gap = height / (labels.length + 1);
-  return labels.map((label, index) => ({ label, type, x, y: gap * (index + 1) }));
+function drawOverviewLinks(ctx) {
+  const graph = state.overviewGraph;
+  const selected = graph.selected;
+  graph.links.forEach((link) => {
+    const active = selected && (link.source === selected.id || link.target === selected.id);
+    ctx.strokeStyle = active ? rgba("#2563eb", 0.55) : rgba("#94a3b8", 0.18);
+    ctx.lineWidth = active ? 1.8 : 0.9;
+    ctx.beginPath();
+    ctx.moveTo(link.sourceNode.x, link.sourceNode.y);
+    ctx.lineTo(link.targetNode.x, link.targetNode.y);
+    ctx.stroke();
+  });
+}
+
+function drawOverviewNodes(ctx) {
+  const graph = state.overviewGraph;
+  graph.nodes.forEach((node) => {
+    const color = overviewTypeColor(node.type);
+    const radius = overviewNodeRadius(node);
+    const active = graph.selected?.id === node.id || graph.hovered?.id === node.id || node.searchHit;
+    ctx.fillStyle = active ? rgba(color, 0.22) : rgba(color, 0.08);
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, radius + (active ? 9 : 5), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    if (active || node.important || ["center", "control", "process", "role", "cost_model"].includes(node.type)) {
+      drawOverviewNodeLabel(ctx, node, active);
+    }
+  });
+}
+
+function drawOverviewNodeLabel(ctx, node, active) {
+  ctx.fillStyle = active ? "#0f172a" : "#334155";
+  ctx.font = `${active || node.important ? "700" : "600"} ${active ? 13 : 11}px system-ui`;
+  ctx.textAlign = "center";
+  const label = node.label.length > 18 ? `${node.label.slice(0, 17)}...` : node.label;
+  ctx.fillText(label, node.x, node.y + overviewNodeRadius(node) + 15);
+}
+
+function overviewNodeRadius(node) {
+  if (node.type === "center") return 28;
+  if (node.important || node.id.startsWith("hub:")) return 16;
+  const base = Number(node.radius) || 11;
+  return Math.max(8, Math.min(15, base));
+}
+
+function overviewTypeColor(type) {
+  return state.graphData?.types?.find((item) => item.id === type)?.color || colors.muted;
+}
+
+function overviewTypeLabel(type) {
+  return state.graphData?.types?.find((item) => item.id === type)?.label || type;
 }
 
 function drawBreachChain(canvas, active) {

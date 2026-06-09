@@ -41,8 +41,21 @@
               <h2>役割 - RACIV - プロセス - 記録 - ISMS - 上位フレームワーク</h2>
             </div>
           </div>
-          <canvas id="vaultGraphCanvas" class="vault-graph-canvas" aria-label="セキュリティ組織グラフ"></canvas>
-          <div id="graphLegend" class="graph-legend"></div>
+          <div class="graph-workspace">
+            <div class="overview-graph-tools">
+              <label class="graph-search">
+                <span>検索</span>
+                <input id="overviewGraphSearch" type="search" placeholder="役割・プロセス・管理策を検索">
+              </label>
+              <div id="overviewGraphFilters" class="graph-filter-row" aria-label="表示種別フィルター"></div>
+              <button id="overviewGraphReset" class="compact-action" type="button">表示を戻す</button>
+            </div>
+            <div class="overview-graph-layout">
+              <canvas id="vaultGraphCanvas" class="vault-graph-canvas" aria-label="セキュリティ組織グラフ"></canvas>
+              <aside id="overviewNodeDetail" class="detail-panel" aria-label="選択ノード詳細"></aside>
+            </div>
+            <div id="graphLegend" class="graph-legend"></div>
+          </div>
         </section>
       </div>
     </section>
